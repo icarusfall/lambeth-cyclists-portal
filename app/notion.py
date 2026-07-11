@@ -199,9 +199,15 @@ def items_with_deadlines(within_days: int = 60) -> list[dict]:
 
 
 def active_projects() -> list[dict]:
+    """Projects worth mentioning in a newsletter — live or being planned."""
     results = query(
         get_settings().notion_projects_db,
-        filter_obj={"property": "Status", "select": {"equals": "active"}},
+        filter_obj={
+            "or": [
+                {"property": "Status", "select": {"equals": "active"}},
+                {"property": "Status", "select": {"equals": "planning"}},
+            ]
+        },
         limit=20,
     )
     return [simplify_page(p) for p in results]

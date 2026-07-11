@@ -27,6 +27,10 @@
       <button type="button" class="btn ghost" onclick="addManualStory()">＋ Add your own</button>
       <span id="gather-spinner" class="spinner htmx-indicator">Thinking…</span>
     </div>
+    <label class="inline">
+      <input type="checkbox" name="include_seen">
+      include stories we've already seen (normally suggestions skip anything already listed below)
+    </label>
     <div id="stories"></div>
   </section>
 

@@ -11,6 +11,13 @@
   <span id="save-spinner" class="spinner htmx-indicator">Saving…</span>
   {% if page_id %}
     <a class="btn go" href="/newsletter/{{ page_id }}/send">3 · Review &amp; send →</a>
+    <button type="button" class="btn danger"
+            hx-post="/newsletter/{{ page_id }}/discard"
+            hx-confirm="Discard this draft? It moves to Notion's trash (recoverable there for about 30 days)."
+            hx-target="#discard-flash" hx-swap="innerHTML">
+      🗑 Discard draft
+    </button>
   {% endif %}
 </div>
+<div id="discard-flash"></div>
 <div id="preview"></div>

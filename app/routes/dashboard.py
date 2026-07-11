@@ -13,12 +13,12 @@ router = APIRouter()
 @router.get("/")
 async def home(request: Request, user: str = Depends(require_user)):
     error = None
-    meetings, deadlines, recent, draft = [], [], [], None
+    meetings, deadlines, recent, drafts = [], [], [], []
     try:
         meetings = notion.upcoming_meetings()
         deadlines = notion.items_with_deadlines()
         recent = notion.recent_items(days=30)
-        draft = notion.current_draft()
+        drafts = notion.current_drafts()
     except Exception as e:
         logger.exception("Dashboard Notion queries failed")
         error = f"Couldn't load data from Notion: {e}"
@@ -32,7 +32,7 @@ async def home(request: Request, user: str = Depends(require_user)):
             "no_future_meeting": not meetings and not error,
             "deadlines": deadlines,
             "recent": recent,
-            "draft": draft,
+            "drafts": drafts,
             "error": error,
         },
     )

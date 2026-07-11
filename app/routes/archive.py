@@ -13,16 +13,20 @@ router = APIRouter()
 @router.get("/archive")
 async def archive_list(request: Request, user: str = Depends(require_user)):
     error = None
-    newsletters = []
+    drafts, sent = [], []
     try:
-        newsletters = notion.list_newsletters()
+        for nl in notion.list_newsletters():
+            if nl["props"].get("Status") == notion.NEWSLETTER_STATUS_SENT:
+                sent.append(nl)
+            else:
+                drafts.append(nl)
     except Exception as e:
         logger.exception("Archive list failed")
         error = str(e)
     return templates.TemplateResponse(
         request,
         "archive.html",
-        {"user": user, "newsletters": newsletters, "error": error},
+        {"user": user, "drafts": drafts, "sent": sent, "error": error},
     )
 
 

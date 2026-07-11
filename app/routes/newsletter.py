@@ -2,7 +2,7 @@ import logging
 from datetime import date
 
 from fastapi import APIRouter, Depends, Form, Request
-from fastapi.responses import Response
+from fastapi.responses import RedirectResponse, Response
 
 from app import ai, mailer, notion
 from app.auth import require_user
@@ -103,16 +103,43 @@ async def builder(
 # ---------------------------------------------------------------------------
 
 
+async def headlines_to_skip(request: Request) -> list[str]:
+    """Headlines of story cards already on the page, so the AI doesn't repeat
+    them — unless the 'include stories we've already seen' box is ticked, in
+    which case nothing is skipped."""
+    form = await request.form()
+    if form.get("include_seen"):
+        return []
+    return [
+        str(v).strip()
+        for k, v in form.multi_items()
+        if k.startswith("headline_") and str(v).strip()
+    ]
+
+
 @router.post("/newsletter/suggest")
 async def suggest(request: Request, user: str = Depends(require_user)):
+    skip = await headlines_to_skip(request)
     try:
         items_md = pages_to_md(notion.recent_items(days=45))
         projects_md = pages_to_md(notion.active_projects())
-        stories = ai.suggest_stories(items_md, projects_md)
+        stories = ai.suggest_stories(items_md, projects_md, skip)
     except Exception as e:
         logger.exception("Suggest stories failed")
         return templates.TemplateResponse(
             request, "partials/_error.html", {"message": f"Suggesting stories failed: {e}"}
+        )
+    if not stories:
+        return templates.TemplateResponse(
+            request,
+            "partials/_error.html",
+            {
+                "message": (
+                    "Nothing new to suggest beyond the stories already listed. "
+                    "Tick “include stories we've already seen” to get the full "
+                    "set of suggestions again."
+                )
+            },
         )
     return templates.TemplateResponse(
         request,
@@ -123,12 +150,9 @@ async def suggest(request: Request, user: str = Depends(require_user)):
 
 @router.post("/newsletter/news-scan")
 async def scan_news(request: Request, user: str = Depends(require_user)):
-    form = await request.form()
-    existing_headlines = [
-        str(v).strip() for k, v in form.multi_items() if k.startswith("headline_") and str(v).strip()
-    ]
+    skip = await headlines_to_skip(request)
     try:
-        stories = ai.news_scan(existing_headlines)
+        stories = ai.news_scan(skip)
     except Exception as e:
         logger.exception("News scan failed")
         return templates.TemplateResponse(
@@ -138,7 +162,13 @@ async def scan_news(request: Request, user: str = Depends(require_user)):
         return templates.TemplateResponse(
             request,
             "partials/_error.html",
-            {"message": "News scan found nothing new — no extra stories added."},
+            {
+                "message": (
+                    "News scan found nothing new beyond the stories already "
+                    "listed. Tick “include stories we've already seen” to see "
+                    "everything the scan can find."
+                )
+            },
         )
     return templates.TemplateResponse(
         request,
@@ -226,6 +256,28 @@ async def save(
             "saved": True,
         },
     )
+
+
+@router.post("/newsletter/{page_id}/discard")
+async def discard(request: Request, page_id: str, user: str = Depends(require_user)):
+    """Move a draft to Notion's trash. Buttons calling this use hx-confirm."""
+    try:
+        nl = notion.load_newsletter(page_id)
+        if nl["status"] == notion.NEWSLETTER_STATUS_SENT:
+            return templates.TemplateResponse(
+                request,
+                "partials/_error.html",
+                {"message": "That newsletter has been sent — it stays in the archive."},
+            )
+        notion.discard_newsletter(page_id)
+    except Exception as e:
+        logger.exception("Discard draft failed")
+        return templates.TemplateResponse(
+            request, "partials/_error.html", {"message": f"Discarding failed: {e}"}
+        )
+    if request.headers.get("HX-Request"):
+        return Response(status_code=200, headers={"HX-Redirect": "/archive"})
+    return RedirectResponse("/archive", status_code=303)
 
 
 # ---------------------------------------------------------------------------

@@ -42,8 +42,17 @@ VOICE = (
 )
 
 
-def suggest_stories(items_md: str, projects_md: str) -> list[Story]:
+def suggest_stories(
+    items_md: str, projects_md: str, existing_headlines: list[str] | None = None
+) -> list[Story]:
     """Turn recent Notion items + active projects into candidate newsletter stories."""
+    already = ""
+    if existing_headlines:
+        already = (
+            "\n\nWe already have story cards on these — skip anything that covers "
+            "the same ground:\n"
+            + "\n".join(f"- {h}" for h in existing_headlines)
+        )
     response = client().messages.parse(
         model=MODEL,
         max_tokens=4096,
@@ -62,6 +71,7 @@ def suggest_stories(items_md: str, projects_md: str) -> list[Story]:
                     "admin noise, duplicates, and anything with no reader interest. "
                     "Mention consultation deadlines where they exist — encouraging "
                     "members to respond to consultations is a core purpose."
+                    f"{already}"
                 ),
             }
         ],

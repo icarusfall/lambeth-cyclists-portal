@@ -32,15 +32,23 @@
 
 <section>
   <h2>This month's newsletter</h2>
-  <div class="card">
-    {% if draft %}
-      <p>Draft in progress: <strong>{{ draft.title }}</strong></p>
+  {% if drafts %}
+    {% for draft in drafts %}
+    <div class="card slim">
+      <strong>{{ draft.title }}</strong>
+      <span class="tag draft">draft</span>
       <a class="btn primary" href="/newsletter?id={{ draft.id }}">Continue draft →</a>
-    {% else %}
+    </div>
+    {% endfor %}
+    {% if drafts|length > 1 %}
+    <p class="muted small">More than one draft on the go — you can tidy up from the <a href="/archive">Newsletters page</a>.</p>
+    {% endif %}
+  {% else %}
+    <div class="card">
       <p>No draft on the go yet.</p>
       <a class="btn primary" href="/newsletter">Start this month's newsletter →</a>
-    {% endif %}
-  </div>
+    </div>
+  {% endif %}
 </section>
 
 {% if deadlines %}

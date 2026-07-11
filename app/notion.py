@@ -293,6 +293,11 @@ def load_newsletter(page_id: str) -> dict:
     }
 
 
+def discard_newsletter(page_id: str):
+    """Move a newsletter page to Notion's trash (recoverable there for ~30 days)."""
+    client().pages.update(page_id=page_id, in_trash=True)
+
+
 def mark_newsletter_sent(page_id: str, sent_by: str, channels: list[str]):
     client().pages.update(
         page_id=page_id,
@@ -365,8 +370,8 @@ def set_portal_user_password(name: str, password_hash: str):
     )
 
 
-def current_draft() -> dict | None:
-    """Most recent draft-status newsletter, if any (dashboard shows it)."""
+def current_drafts(limit: int = 10) -> list[dict]:
+    """All draft-status newsletters, newest first (dashboard lists them)."""
     results = query(
         get_settings().notion_newsletters_db,
         filter_obj={
@@ -374,6 +379,6 @@ def current_draft() -> dict | None:
             "select": {"equals": NEWSLETTER_STATUS_DRAFT},
         },
         sorts=[{"timestamp": "created_time", "direction": "descending"}],
-        limit=1,
+        limit=limit,
     )
-    return simplify_page(results[0]) if results else None
+    return [simplify_page(p) for p in results]

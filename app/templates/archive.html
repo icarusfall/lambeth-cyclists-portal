@@ -1,12 +1,32 @@
 {% extends "base.html" %}
-{% block title %}Archive — Lambeth Cyclists{% endblock %}
+{% block title %}Newsletters — Lambeth Cyclists{% endblock %}
 {% block content %}
-<h1>Newsletter archive</h1>
+<h1>Newsletters</h1>
 {% if error %}<p class="flash err">{{ error }}</p>{% endif %}
-{% for nl in newsletters %}
+<div id="discard-flash"></div>
+
+<h2>Current drafts</h2>
+{% for nl in drafts %}
+<div class="card slim">
+  <strong><a href="/newsletter?id={{ nl.id }}">{{ nl.title }}</a></strong>
+  <span class="tag draft">draft</span>
+  <a class="btn" href="/newsletter?id={{ nl.id }}">Continue editing</a>
+  <button type="button" class="btn ghost"
+          hx-post="/newsletter/{{ nl.id }}/discard"
+          hx-confirm="Discard “{{ nl.title }}”? It moves to Notion's trash (recoverable there for about 30 days)."
+          hx-target="#discard-flash" hx-swap="innerHTML">
+    🗑 Discard
+  </button>
+</div>
+{% else %}
+<p class="muted">No drafts on the go — <a href="/newsletter">start one</a>.</p>
+{% endfor %}
+
+<h2>Archive of previous newsletters</h2>
+{% for nl in sent %}
 <div class="card slim">
   <strong><a href="/archive/{{ nl.id }}">{{ nl.title }}</a></strong>
-  <span class="tag {{ nl.props.get('Status', 'draft') }}">{{ nl.props.get('Status', 'draft') }}</span>
+  <span class="tag sent">sent</span>
   <span class="muted small">
     {{ nl.props.get('Sent Date', '') }}
     {% if nl.props.get('Sent By') %} · sent by {{ nl.props['Sent By'] }}{% endif %}
@@ -14,6 +34,6 @@
   </span>
 </div>
 {% else %}
-<p class="muted">No newsletters yet — <a href="/newsletter">start the first one</a>.</p>
+<p class="muted">Nothing sent yet.</p>
 {% endfor %}
 {% endblock %}

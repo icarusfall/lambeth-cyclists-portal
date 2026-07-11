@@ -13,7 +13,7 @@ from app.auth import (
     create_session_token,
     verify_login,
 )
-from app.routes import archive, dashboard, newsletter
+from app.routes import account, archive, chat, dashboard, newsletter
 from app.web import templates
 
 logging.basicConfig(level=logging.INFO)
@@ -71,3 +71,5 @@ async def health():
 app.include_router(dashboard.router)
 app.include_router(newsletter.router)
 app.include_router(archive.router)
+app.include_router(account.router)
+app.include_router(chat.router)

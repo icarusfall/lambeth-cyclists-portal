@@ -18,9 +18,14 @@ class Settings(BaseSettings):
     notion_items_db: str = "2e32d7a2437880298c81f1af94c441a0"
     notion_projects_db: str = "2e42d7a2437880d686e8ff554556b0c1"
     notion_newsletters_db: str = ""
+    notion_users_db: str = ""
 
     # AI
     anthropic_api_key: str = ""
+
+    # Chat (CycleBot MCP server on Railway)
+    mcp_server_url: str = "https://lambeth-cyclists-mcp-production.up.railway.app/mcp"
+    mcp_api_key: str = ""
 
     # Sending
     resend_api_key: str = ""

@@ -33,6 +33,21 @@ def markdown_to_email_html(markdown_body: str) -> str:
 """
 
 
+def send_plain(to_email: str, subject: str, body_text: str) -> str:
+    """Small utility email (password resets etc.). Returns the Resend id."""
+    settings = get_settings()
+    resend.api_key = settings.resend_api_key
+    response = resend.Emails.send(
+        {
+            "from": settings.newsletter_from,
+            "to": [to_email],
+            "subject": subject,
+            "text": body_text,
+        }
+    )
+    return response.get("id", "unknown")
+
+
 def send_newsletter(subject: str, markdown_body: str, to_email: str) -> str:
     """Send the newsletter. Returns the Resend email id. Raises on failure."""
     settings = get_settings()

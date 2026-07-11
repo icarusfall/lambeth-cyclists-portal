@@ -114,6 +114,53 @@ def news_scan(existing_headlines: list[str]) -> list[Story]:
     return response.parsed_output.stories
 
 
+CHAT_SYSTEM = (
+    VOICE
+    + " You are the assistant inside the Lambeth Cyclists members' portal, "
+    "talking to a committee member. Use the Notion tools to look things up "
+    "before answering — never guess or make up data. You can summarise "
+    "anything in the databases (all filed emails/items, meetings, projects, "
+    "ward and councillor research), including things that weren't picked for "
+    "the newsletter. Keep answers concise and practical; members are busy. "
+    "You have read-only access — for edits, point them at Notion or the "
+    "newsletter builder. If you can't find something, say so honestly."
+)
+
+
+def chat_reply(messages: list[dict]) -> str:
+    """One portal-chat turn. `messages` is the full [{role, content}] history.
+
+    Uses the MCP connector to give Claude the CycleBot MCP server's read-only
+    Notion tools. Server-side tool loops can pause (`pause_turn`) — resume a
+    few times before giving up.
+    """
+    settings = get_settings()
+    mcp_servers = [
+        {
+            "type": "url",
+            "url": settings.mcp_server_url,
+            "name": "lambeth-cyclists",
+            "authorization_token": settings.mcp_api_key,
+        }
+    ]
+    convo = list(messages)
+    for _ in range(4):
+        response = client().with_options(timeout=120.0).beta.messages.create(
+            model=MODEL,
+            max_tokens=4096,
+            output_config={"effort": "medium"},
+            system=CHAT_SYSTEM,
+            betas=["mcp-client-2025-11-20"],
+            mcp_servers=mcp_servers,
+            tools=[{"type": "mcp_toolset", "mcp_server_name": "lambeth-cyclists"}],
+            messages=convo,
+        )
+        if response.stop_reason != "pause_turn":
+            break
+        convo = convo + [{"role": "assistant", "content": response.content}]
+    return "".join(b.text for b in response.content if b.type == "text").strip()
+
+
 def draft_newsletter(
     stories_md: str, meetings_md: str, month_label: str
 ) -> str:

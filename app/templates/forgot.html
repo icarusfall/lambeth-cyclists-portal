@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Forgotten password — Lambeth Cyclists{% endblock %}
+{% block content %}
+<div class="login-box card">
+  <h1>Forgotten password</h1>
+  {% if done %}
+    <p class="flash ok">If that user has an email address on record, a reset
+    link is on its way (valid for 1 hour).</p>
+    <p><a href="/login">← back to login</a></p>
+  {% else %}
+    <form method="post" action="/forgot">
+      <label>Your login name
+        <input type="text" name="name" autocapitalize="none" required>
+      </label>
+      <button type="submit" class="btn primary">Email me a reset link</button>
+    </form>
+    <p class="muted small">No email on record? Ask Charlie to reset it for you.</p>
+  {% endif %}
+</div>
+{% endblock %}

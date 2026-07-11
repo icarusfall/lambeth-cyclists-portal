@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}Chat — Lambeth Cyclists{% endblock %}
+{% block content %}
+<h1>Ask the portal</h1>
+<p class="muted">Chat has read access to everything in Notion — meetings,
+filed emails/items, projects, and the ward &amp; councillor research. Try:
+<em>“summarise all the emails we filed since May, even ones that didn’t make
+the newsletter”</em> or <em>“what did the last meeting decide?”</em></p>
+
+{% if not configured %}
+<p class="flash err">Chat isn't configured yet — the MCP_API_KEY environment
+variable is missing.</p>
+{% endif %}
+
+<div id="chat-log"></div>
+
+<form id="chat-form" class="chat-form">
+  <textarea id="chat-input" rows="2" placeholder="Ask something…" required></textarea>
+  <button type="submit" class="btn primary" id="chat-send" {% if not configured %}disabled{% endif %}>Send</button>
+</form>
+
+<script>
+const log = document.getElementById('chat-log');
+const form = document.getElementById('chat-form');
+const input = document.getElementById('chat-input');
+const sendBtn = document.getElementById('chat-send');
+const history = [];
+
+function addBubble(cls, html) {
+  const div = document.createElement('div');
+  div.className = 'bubble ' + cls;
+  div.innerHTML = html;
+  log.appendChild(div);
+  div.scrollIntoView({behavior: 'smooth', block: 'end'});
+  return div;
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const text = input.value.trim();
+  if (!text) return;
+  input.value = '';
+  history.push({role: 'user', content: text});
+  addBubble('me', esc(text));
+  const thinking = addBubble('bot muted', 'Looking that up… <span class="dots">⏳</span>');
+  sendBtn.disabled = true;
+  try {
+    const res = await fetch('/chat/api', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({messages: history}),
+    });
+    const data = await res.json();
+    thinking.remove();
+    if (!res.ok) {
+      addBubble('bot err', esc(data.error || 'Something went wrong.'));
+      history.pop();  // let them retry the same question
+    } else {
+      history.push({role: 'assistant', content: data.markdown});
+      addBubble('bot', data.html);
+    }
+  } catch (err) {
+    thinking.remove();
+    addBubble('bot err', 'Network error — try again.');
+    history.pop();
+  } finally {
+    sendBtn.disabled = false;
+    input.focus();
+  }
+});
+
+// Enter sends, Shift+Enter for a newline
+input.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    form.requestSubmit();
+  }
+});
+</script>
+{% endblock %}

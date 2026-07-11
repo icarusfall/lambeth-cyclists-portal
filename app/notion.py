@@ -318,6 +318,53 @@ def list_newsletters(limit: int = 50) -> list[dict]:
     return [simplify_page(p) for p in results]
 
 
+# ---------------------------------------------------------------------------
+# Portal users (Name, Email, Password Hash) — lets people change their own
+# password; the PORTAL_USERS env var remains as bootstrap/fallback.
+# ---------------------------------------------------------------------------
+
+
+def get_portal_user(name: str) -> dict | None:
+    """Return {page_id, name, email, password_hash} for a user, or None."""
+    db_id = get_settings().notion_users_db
+    if not db_id:
+        return None
+    results = query(
+        db_id,
+        filter_obj={"property": "Name", "title": {"equals": name.strip().lower()}},
+        limit=1,
+    )
+    if not results:
+        return None
+    simple = simplify_page(results[0])
+    return {
+        "page_id": simple["id"],
+        "name": simple["title"],
+        "email": simple["props"].get("Email", ""),
+        "password_hash": simple["props"].get("Password Hash", ""),
+    }
+
+
+def set_portal_user_password(name: str, password_hash: str):
+    """Write a user's new bcrypt hash, creating their row if needed."""
+    name = name.strip().lower()
+    existing = get_portal_user(name)
+    properties = {
+        "Password Hash": {
+            "rich_text": [{"type": "text", "text": {"content": password_hash}}]
+        }
+    }
+    if existing:
+        client().pages.update(page_id=existing["page_id"], properties=properties)
+        return
+    db_id = get_settings().notion_users_db
+    properties["Name"] = {"title": [{"type": "text", "text": {"content": name}}]}
+    client().pages.create(
+        parent={"type": "data_source_id", "data_source_id": ds_id_for(db_id)},
+        properties=properties,
+    )
+
+
 def current_draft() -> dict | None:
     """Most recent draft-status newsletter, if any (dashboard shows it)."""
     results = query(

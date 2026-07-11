@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block title %}Account — Lambeth Cyclists{% endblock %}
+{% block content %}
+<h1>Your account</h1>
+<p class="muted">Logged in as <strong>{{ user }}</strong></p>
+
+{% if message %}<p class="flash ok">{{ message }}</p>{% endif %}
+{% if error %}<p class="flash err">{{ error }}</p>{% endif %}
+
+<div class="card">
+  <h2>Change password</h2>
+  <form method="post" action="/account/password">
+    <label>Current password
+      <input type="password" name="current_password" autocomplete="current-password" required>
+    </label>
+    <label>New password <span class="muted">(at least 8 characters)</span>
+      <input type="password" name="new_password" autocomplete="new-password" required minlength="8">
+    </label>
+    <label>Confirm new password
+      <input type="password" name="confirm_password" autocomplete="new-password" required minlength="8">
+    </label>
+    <button type="submit" class="btn primary">Change password</button>
+  </form>
+</div>
+{% endblock %}

@@ -32,10 +32,25 @@ def parse_users() -> dict[str, str]:
     return users
 
 
+def lookup_password_hash(name: str) -> str | None:
+    """A user's current hash: their Notion row wins (self-service password
+    changes live there); the PORTAL_USERS env var is the bootstrap fallback."""
+    name = name.strip().lower()
+    try:
+        from app import notion
+
+        record = notion.get_portal_user(name)
+        if record and record["password_hash"].strip():
+            return record["password_hash"].strip()
+    except Exception:
+        # Notion down/unconfigured must not lock everyone out
+        pass
+    return parse_users().get(name)
+
+
 def verify_login(name: str, password: str) -> str | None:
     """Return the canonical user name if credentials are valid, else None."""
-    users = parse_users()
-    pw_hash = users.get(name.strip().lower())
+    pw_hash = lookup_password_hash(name)
     if not pw_hash:
         # Still do a bcrypt round so unknown vs wrong-password timing is identical
         bcrypt.checkpw(b"x", bcrypt.hashpw(b"y", bcrypt.gensalt(rounds=4)))
@@ -43,6 +58,31 @@ def verify_login(name: str, password: str) -> str | None:
     if bcrypt.checkpw(password.encode(), pw_hash.encode()):
         return name.strip().lower()
     return None
+
+
+def hash_password(password: str) -> str:
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+# --- Password reset tokens (emailed links, 1 hour validity) ---
+
+RESET_MAX_AGE = 3600
+
+
+def _reset_serializer() -> URLSafeTimedSerializer:
+    return URLSafeTimedSerializer(get_settings().session_secret, salt="pw-reset")
+
+
+def create_reset_token(name: str) -> str:
+    return _reset_serializer().dumps({"user": name.strip().lower()})
+
+
+def verify_reset_token(token: str) -> str | None:
+    try:
+        data = _reset_serializer().loads(token, max_age=RESET_MAX_AGE)
+    except (BadSignature, SignatureExpired):
+        return None
+    return data.get("user")
 
 
 def create_session_token(name: str) -> str:

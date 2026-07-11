@@ -37,15 +37,17 @@ def send_newsletter(subject: str, markdown_body: str, to_email: str) -> str:
     """Send the newsletter. Returns the Resend email id. Raises on failure."""
     settings = get_settings()
     resend.api_key = settings.resend_api_key
-    response = resend.Emails.send(
-        {
-            "from": settings.newsletter_from,
-            "to": [to_email],
-            "subject": subject,
-            "text": markdown_body,
-            "html": markdown_to_email_html(markdown_body),
-        }
-    )
+    params = {
+        "from": settings.newsletter_from,
+        "to": [to_email],
+        "subject": subject,
+        "text": markdown_body,
+        "html": markdown_to_email_html(markdown_body),
+    }
+    # newsletter@lambethcyclists.com has no mailbox — route replies somewhere read
+    if settings.newsletter_reply_to:
+        params["reply_to"] = [settings.newsletter_reply_to]
+    response = resend.Emails.send(params)
     email_id = response.get("id", "unknown")
     logger.info("Newsletter sent to %s (resend id %s)", to_email, email_id)
     return email_id

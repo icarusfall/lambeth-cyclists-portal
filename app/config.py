@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     # Sending
     resend_api_key: str = ""
     newsletter_from: str = "Lambeth Cyclists <newsletter@lambethcyclists.com>"
+    newsletter_reply_to: str = ""
     group_email: str = ""
 
 

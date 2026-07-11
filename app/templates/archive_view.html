@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block title %}{{ nl.title }} — Lambeth Cyclists{% endblock %}
+{% block content %}
+<p><a class="muted" href="/archive">← archive</a></p>
+<h1>{{ nl.title }}</h1>
+<p class="muted">{{ nl.subject }} · {{ nl.status }}</p>
+{% if nl.status == 'draft' %}
+<p><a class="btn primary" href="/newsletter?id={{ nl.id }}">Continue editing →</a></p>
+{% endif %}
+<div class="preview card">{{ html_body|safe }}</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% if saved %}<p class="flash ok">Draft saved to Notion.</p>{% endif %}
+<input type="hidden" name="page_id" value="{{ page_id }}">
+<textarea name="markdown_body" rows="18" class="draft-md">{{ markdown_body }}</textarea>
+<div class="btnrow">
+  <button type="button" class="btn"
+          hx-post="/newsletter/preview" hx-target="#preview" hx-swap="innerHTML"
+          hx-include="#builder">👁 Preview</button>
+  <button type="button" class="btn primary"
+          hx-post="/newsletter/save" hx-target="#draft-area" hx-swap="innerHTML"
+          hx-include="#builder" hx-indicator="#save-spinner">💾 Save draft</button>
+  <span id="save-spinner" class="spinner htmx-indicator">Saving…</span>
+  {% if page_id %}
+    <a class="btn go" href="/newsletter/{{ page_id }}/send">3 · Review &amp; send →</a>
+  {% endif %}
+</div>
+<div id="preview"></div>

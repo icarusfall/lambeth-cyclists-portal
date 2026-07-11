@@ -1,0 +1,12 @@
+{% if label %}<p class="muted small">{{ label }} — {{ stories|length }} suggestion{{ 's' if stories|length != 1 }}:</p>{% endif %}
+{% for s in stories %}
+{% set idx = 's' ~ range(100000, 999999)|random %}
+<div class="card story">
+  <label class="inline"><input type="checkbox" name="include_{{ idx }}" checked> include</label>
+  <input type="text" name="headline_{{ idx }}" value="{{ s.headline }}">
+  <textarea name="summary_{{ idx }}" rows="3">{{ s.summary }}</textarea>
+  <input type="url" name="url_{{ idx }}" placeholder="Link (optional)" value="{{ s.url or '' }}">
+  <input type="hidden" name="source_{{ idx }}" value="{{ s.source }}">
+  {% if s.source %}<span class="muted small">source: {{ s.source }}</span>{% endif %}
+</div>
+{% endfor %}

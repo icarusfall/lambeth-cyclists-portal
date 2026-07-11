@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}Newsletter builder — Lambeth Cyclists{% endblock %}
+{% block content %}
+<h1>{{ month }} newsletter</h1>
+
+{% if existing and existing.error %}
+  <p class="flash err">Couldn't load that draft: {{ existing.error }}</p>
+{% endif %}
+
+<form id="builder">
+  <input type="hidden" name="page_id" value="{{ existing.id if existing and not existing.error else '' }}">
+
+  <section class="step">
+    <h2><span class="stepnum">1</span> Gather stories</h2>
+    <p class="muted">Pull suggestions, untick what you don't want, and edit the text — your edits carry through to the draft.</p>
+    <div class="btnrow">
+      <button type="button" class="btn"
+              hx-post="/newsletter/suggest" hx-target="#stories" hx-swap="beforeend"
+              hx-include="#builder" hx-indicator="#gather-spinner">
+        ✨ Suggest stories from Notion
+      </button>
+      <button type="button" class="btn"
+              hx-post="/newsletter/news-scan" hx-target="#stories" hx-swap="beforeend"
+              hx-include="#builder" hx-indicator="#gather-spinner">
+        📰 Scan the news
+      </button>
+      <button type="button" class="btn ghost" onclick="addManualStory()">＋ Add your own</button>
+      <span id="gather-spinner" class="spinner htmx-indicator">Thinking…</span>
+    </div>
+    <div id="stories"></div>
+  </section>
+
+  <section class="step">
+    <h2><span class="stepnum">2</span> Draft</h2>
+    <label>Email subject
+      <input type="text" name="subject"
+             value="{{ existing.subject if existing and not existing.error else 'Lambeth Cyclists — ' ~ month }}">
+    </label>
+    <div class="btnrow">
+      <button type="button" class="btn primary"
+              hx-post="/newsletter/draft" hx-target="#draft-area" hx-swap="innerHTML"
+              hx-include="#builder" hx-indicator="#draft-spinner">
+        📝 Draft newsletter from ticked stories
+      </button>
+      <span id="draft-spinner" class="spinner htmx-indicator">Writing…</span>
+    </div>
+    <div id="draft-area">
+      {% if existing and not existing.error %}
+        {% with markdown_body=existing.markdown, subject=existing.subject, page_id=existing.id, saved=True %}
+          {% include "partials/_draft.html" %}
+        {% endwith %}
+      {% endif %}
+    </div>
+  </section>
+</form>
+
+<template id="manual-story-template">
+  <div class="card story">
+    <label class="inline"><input type="checkbox" name="include___IDX__" checked> include</label>
+    <input type="text" name="headline___IDX__" placeholder="Headline" value="">
+    <textarea name="summary___IDX__" rows="3" placeholder="A couple of friendly sentences…"></textarea>
+    <input type="url" name="url___IDX__" placeholder="Link (optional)" value="">
+    <input type="hidden" name="source___IDX__" value="Manual">
+  </div>
+</template>
+
+<script>
+function addManualStory() {
+  const idx = 'm' + Math.random().toString(36).slice(2, 8);
+  const html = document.getElementById('manual-story-template')
+    .innerHTML.replaceAll('__IDX__', idx);
+  document.getElementById('stories').insertAdjacentHTML('beforeend', html);
+}
+</script>
+{% endblock %}

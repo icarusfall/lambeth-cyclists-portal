@@ -1,0 +1,24 @@
+<div class="flash ok big">
+  ✅ Done — marked as sent by the portal.
+  {% if 'Google Group' in channels %}<br>Emailed to the Google Group (Resend id: {{ group_result }}).{% endif %}
+</div>
+
+{% if for_lcc %}
+<h3>Copy-paste for the LCC system</h3>
+<p class="muted small">Plain text version:</p>
+<textarea id="lcc-text" rows="12" readonly>{{ text_body }}</textarea>
+<button type="button" class="btn" onclick="copyBox('lcc-text', this)">📋 Copy plain text</button>
+
+<p class="muted small">HTML version (if the LCC editor accepts HTML source):</p>
+<textarea id="lcc-html" rows="8" readonly>{{ html_body }}</textarea>
+<button type="button" class="btn" onclick="copyBox('lcc-html', this)">📋 Copy HTML</button>
+
+<script>
+function copyBox(id, btn) {
+  navigator.clipboard.writeText(document.getElementById(id).value)
+    .then(() => { btn.textContent = '✅ Copied'; });
+}
+</script>
+{% endif %}
+
+<p><a class="btn" href="/archive">View the archive →</a></p>

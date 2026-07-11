@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Home — Lambeth Cyclists{% endblock %}
+{% block content %}
+<h1>Hello {{ user|capitalize }} 👋</h1>
+
+{% if error %}<p class="flash err">{{ error }}</p>{% endif %}
+
+{% if no_future_meeting %}
+<div class="banner warn">
+  ⚠️ <strong>No future meeting is in the diary.</strong>
+  Add the next committee meeting to the Meetings database in Notion so the
+  agenda automation (and this portal) can pick it up.
+</div>
+{% endif %}
+
+{% if meetings %}
+<section>
+  <h2>Next meeting{{ 's' if meetings|length > 1 }}</h2>
+  {% for m in meetings %}
+  <div class="card meeting">
+    <strong>{{ m.title }}</strong>
+    <ul class="props">
+      {% for name in ['Meeting Date', 'Meeting Format', 'Location', 'Zoom Link'] %}
+        {% if m.props.get(name) %}<li><span>{{ name }}</span> {{ m.props[name] }}</li>{% endif %}
+      {% endfor %}
+    </ul>
+    <a class="muted small" href="{{ m.url }}" target="_blank">Open in Notion ↗</a>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section>
+  <h2>This month's newsletter</h2>
+  <div class="card">
+    {% if draft %}
+      <p>Draft in progress: <strong>{{ draft.title }}</strong></p>
+      <a class="btn primary" href="/newsletter?id={{ draft.id }}">Continue draft →</a>
+    {% else %}
+      <p>No draft on the go yet.</p>
+      <a class="btn primary" href="/newsletter">Start this month's newsletter →</a>
+    {% endif %}
+  </div>
+</section>
+
+{% if deadlines %}
+<section>
+  <h2>Consultation deadlines coming up</h2>
+  {% for item in deadlines %}
+  <div class="card slim">
+    <strong>{{ item.title }}</strong>
+    <span class="deadline">{{ item.props.get('Consultation Deadline', '') }}</span>
+    <a class="muted small" href="{{ item.url }}" target="_blank">Notion ↗</a>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+
+<section>
+  <h2>Recent items <span class="muted">(last 30 days: {{ recent|length }})</span></h2>
+  {% for item in recent[:10] %}
+  <div class="card slim">
+    <strong>{{ item.title }}</strong>
+    <span class="muted small">{{ item.props.get('Project Type', '') }} · {{ item.props.get('Date Received', '') }}</span>
+    <a class="muted small" href="{{ item.url }}" target="_blank">Notion ↗</a>
+  </div>
+  {% else %}
+  <p class="muted">Nothing new this month.</p>
+  {% endfor %}
+</section>
+{% endblock %}

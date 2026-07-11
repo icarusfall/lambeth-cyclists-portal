@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "portal",
+      "runtimeExecutable": "venv\\Scripts\\python",
+      "runtimeArgs": ["-m", "uvicorn", "app.main:app", "--port", "8321"],
+      "port": 8321
+    }
+  ]
+}

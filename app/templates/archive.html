@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Archive — Lambeth Cyclists{% endblock %}
+{% block content %}
+<h1>Newsletter archive</h1>
+{% if error %}<p class="flash err">{{ error }}</p>{% endif %}
+{% for nl in newsletters %}
+<div class="card slim">
+  <strong><a href="/archive/{{ nl.id }}">{{ nl.title }}</a></strong>
+  <span class="tag {{ nl.props.get('Status', 'draft') }}">{{ nl.props.get('Status', 'draft') }}</span>
+  <span class="muted small">
+    {{ nl.props.get('Sent Date', '') }}
+    {% if nl.props.get('Sent By') %} · sent by {{ nl.props['Sent By'] }}{% endif %}
+    {% if nl.props.get('Channels') %} · {{ nl.props['Channels'] }}{% endif %}
+  </span>
+</div>
+{% else %}
+<p class="muted">No newsletters yet — <a href="/newsletter">start the first one</a>.</p>
+{% endfor %}
+{% endblock %}

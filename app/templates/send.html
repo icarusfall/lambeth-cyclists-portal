@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Send — Lambeth Cyclists{% endblock %}
+{% block content %}
+<h1>Review &amp; send</h1>
+<p><a class="muted" href="/newsletter?id={{ nl.id }}">← back to editing</a></p>
+
+<div class="card">
+  <p><strong>Subject:</strong> {{ nl.subject }}</p>
+  <p><strong>Status:</strong> {{ nl.status }}</p>
+</div>
+
+<h2>Preview</h2>
+<div class="preview card">{{ html_preview|safe }}</div>
+
+<h2>Test send</h2>
+<div class="card">
+  <form>
+    <div class="btnrow">
+      <input type="email" name="test_email" placeholder="you@example.com" required style="flex:1">
+      <button type="button" class="btn"
+              hx-post="/newsletter/{{ nl.id }}/send-test"
+              hx-include="closest form" hx-target="#test-result" hx-swap="innerHTML">
+        Send test to just this address
+      </button>
+    </div>
+    <div id="test-result"></div>
+  </form>
+</div>
+
+<h2>Send for real</h2>
+<div class="card">
+  <form>
+    <label class="inline big">
+      <input type="checkbox" name="channel_group" {% if not group_email %}disabled{% endif %}>
+      Email the Google Group
+      {% if group_email %}<span class="muted">({{ group_email }})</span>
+      {% else %}<span class="muted">(GROUP_EMAIL not configured)</span>{% endif %}
+    </label>
+    <label class="inline big">
+      <input type="checkbox" name="channel_lcc">
+      Prepare copy-paste for the LCC messaging system
+    </label>
+    <div class="btnrow">
+      <button type="button" class="btn danger"
+              hx-post="/newsletter/{{ nl.id }}/send"
+              hx-include="closest form" hx-target="#send-result" hx-swap="innerHTML"
+              hx-confirm="Send the newsletter with the selected channels? Emailing the group cannot be undone.">
+        🚀 Send
+      </button>
+    </div>
+    <div id="send-result"></div>
+  </form>
+</div>
+{% endblock %}

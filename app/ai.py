@@ -321,6 +321,17 @@ def suggest_item_fields(
             "The model did not finish reading those pages (it returned stub text). "
             "Try again, or add a line of your own about what this is."
         )
+
+    # You cannot respond to a consultation that has closed. The model reads the
+    # deadline correctly and still calls it response_needed — telling it not to
+    # in the prompt is less reliable than checking the date it just gave us.
+    if suggestion.deadline and suggestion.action_required in ("response_needed", "urgent_action"):
+        try:
+            if date.fromisoformat(suggestion.deadline) < date.today():
+                suggestion.action_required = "monitoring"
+        except ValueError:
+            pass  # unparseable date: leave the model's judgement alone
+
     return suggestion
 
 

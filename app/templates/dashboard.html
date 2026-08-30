@@ -11,6 +11,9 @@
 {% endif %}
 
 {% if error %}<p class="flash err">{{ error }}</p>{% endif %}
+{% if request.query_params.get('added') %}
+<p class="flash ok big">Added to the tracker. It&rsquo;s on the list now.</p>
+{% endif %}
 
 {% if no_future_meeting %}
 <div class="banner warn">
@@ -23,7 +26,7 @@
 <section>
   <div class="section-head">
     <h2>Needs someone</h2>
-    {% if unclaimed %}<span class="muted small">{{ unclaimed|length }} unclaimed</span>{% endif %}
+    <a class="btn ghost small-btn" href="/items/new">+ Add something to watch</a>
   </div>
 
   {% if board_error %}

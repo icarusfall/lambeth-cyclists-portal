@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% block title %}Add something to watch — Lambeth Cyclists{% endblock %}
+{% block content %}
+<h1>Add something to watch</h1>
+<p class="muted lede">
+  For schemes that don&rsquo;t arrive by email &mdash; something mentioned at a
+  meeting, spotted on a council page, or passed on by a member. Paste the links
+  and we&rsquo;ll read them and fill in the rest. You won&rsquo;t need to open Notion.
+</p>
+
+{% if error %}<p class="flash err">{{ error }}</p>{% endif %}
+
+<form hx-post="/items/new/read" hx-target="#suggestion" hx-swap="innerHTML" hx-indicator="#reading">
+  <div class="card">
+    <label>Links
+      <textarea name="links" rows="4"
+        placeholder="https://lambeth.gov.uk/...&#10;https://consultations.tfl.gov.uk/..."></textarea>
+    </label>
+    <p class="muted small">One per line. We only read the pages you paste &mdash; nothing else.</p>
+
+    <label>Anything you already know <span class="muted">(optional)</span>
+      <textarea name="note" rows="3"
+        placeholder="e.g. Simon mentioned this on email — bus speed improvements along Acre Lane, want to make sure cycling isn't squeezed out."></textarea>
+    </label>
+
+    <div class="btnrow">
+      <button class="btn primary" type="submit">Read the links</button>
+      <span id="reading" class="htmx-indicator spinner">reading the pages, about 20 seconds…</span>
+    </div>
+  </div>
+</form>
+
+<div id="suggestion"></div>
+{% endblock %}

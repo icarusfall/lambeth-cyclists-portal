@@ -1,0 +1,91 @@
+{# Step 2 of adding by hand: everything the model proposed, all of it editable.
+   Nothing has been written to Notion at this point. #}
+<h2>Check this over</h2>
+<p class="muted small">
+  Read from the pages you pasted. Change anything that&rsquo;s wrong &mdash;
+  nothing is saved until you press the button at the bottom.
+</p>
+
+{% if s.unreachable %}
+<div class="banner warn">
+  <strong>Couldn&rsquo;t read {{ s.unreachable|length }} of the links.</strong>
+  The rest of this was written without them, so check it more carefully than usual.
+  <ul class="props">{% for u in s.unreachable %}<li class="small">{{ u }}</li>{% endfor %}</ul>
+</div>
+{% endif %}
+
+<form method="post" action="/items/new">
+  <div class="card">
+    <label>Title
+      <input type="text" name="title" value="{{ s.title }}" required>
+    </label>
+
+    <label>Summary
+      <textarea name="summary" rows="3">{{ s.summary }}</textarea>
+    </label>
+
+    <div class="field-row">
+      <label>What kind of thing is it?
+        <select name="project_type">
+          {% for t in project_types %}
+          <option value="{{ t }}" {{ 'selected' if t == s.project_type }}>{{ t|replace('_',' ') }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label>What does it need?
+        <select name="action_required">
+          {% for a in actions %}
+          <option value="{{ a }}" {{ 'selected' if a == s.action_required }}>{{ a|replace('_',' ') }}</option>
+          {% endfor %}
+        </select>
+      </label>
+
+      <label>Priority
+        <select name="priority">
+          {% for p in priorities %}
+          <option value="{{ p }}" {{ 'selected' if p == s.priority }}>{{ p }}</option>
+          {% endfor %}
+        </select>
+      </label>
+    </div>
+
+    <label>Key points
+      <textarea name="key_points" rows="5">{{ s.key_points }}</textarea>
+    </label>
+
+    <label>Why we care
+      <textarea name="why_we_care" rows="3">{{ s.why_we_care }}</textarea>
+    </label>
+
+    <div class="field-row">
+      <label>Deadline <span class="muted">(if there is one)</span>
+        <input type="date" name="deadline" value="{{ s.deadline or '' }}">
+      </label>
+
+      <label>Main link
+        <input type="url" name="main_link" value="{{ s.main_link or '' }}">
+      </label>
+    </div>
+
+    <label>Locations
+      <input type="text" name="locations" value="{{ s.locations|join(', ') }}">
+    </label>
+
+    <label>Tags
+      <input type="text" name="tags" value="{{ s.tags|join(', ') }}">
+    </label>
+
+    <label>Who&rsquo;s keeping an eye on it?
+      <select name="owner">
+        <option value="{{ user }}" selected>{{ user|capitalize }} &mdash; I&rsquo;ll watch this one</option>
+        <option value="">Nobody yet &mdash; put it on the board for someone to pick up</option>
+      </select>
+    </label>
+
+    <div class="btnrow">
+      <button class="btn primary" type="submit">Add it to the tracker</button>
+      <a class="btn ghost" href="/items/new">Start again</a>
+    </div>
+  </div>
+</form>

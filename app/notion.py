@@ -540,3 +540,88 @@ def release_item(page_id: str, user: str) -> dict:
     )
     current["owner"] = None
     return current
+
+
+# ---------------------------------------------------------------------------
+# Creating an item by hand
+# ---------------------------------------------------------------------------
+
+
+def _multi_select_options(db_id: str, field: str) -> list[str]:
+    """Current option names for a multi-select, for reuse in AI suggestions."""
+    ds = client().data_sources.retrieve(data_source_id=ds_id_for(db_id))
+    prop = ds.get("properties", {}).get(field) or {}
+    return [o["name"] for o in prop.get("multi_select", {}).get("options", [])]
+
+
+def item_vocabulary() -> tuple[list[str], list[str]]:
+    """(tags, locations) already in use on the Items database.
+
+    Fed to the model so a hand-added item reuses the vocabulary the email
+    pipeline built up, instead of spawning near-duplicate options.
+    """
+    db = get_settings().notion_items_db
+    return _multi_select_options(db, "Tags"), _multi_select_options(db, "Locations")
+
+
+def create_item(
+    *,
+    title: str,
+    summary: str,
+    project_type: str,
+    action_required: str,
+    priority: str,
+    tags: list[str],
+    locations: list[str],
+    key_points: str,
+    why_we_care: str,
+    deadline: str | None = None,
+    main_link: str | None = None,
+    owner: str | None = None,
+    added_by: str = "",
+) -> dict:
+    """Create an Items page from the portal. Returns {id, url}.
+
+    Processing Status is needs_review, not ai_complete: a person pasted some
+    links and a model read them, so the entry deserves a second look before
+    it is treated as settled.
+    """
+    props: dict = {
+        "Title": {"title": [{"type": "text", "text": {"content": title[:200]}}]},
+        "Summary": {"rich_text": [{"type": "text", "text": {"content": summary[:2000]}}]},
+        "Date Received": {"date": {"start": date.today().isoformat()}},
+        "Project Type": {"select": {"name": project_type}},
+        "Action Required": {"select": {"name": action_required}},
+        "Priority": {"select": {"name": priority}},
+        "Status": {"select": {"name": "new"}},
+        "Processing Status": {"select": {"name": "needs_review"}},
+        "Has Attachments": {"checkbox": False},
+    }
+    if tags:
+        props["Tags"] = {"multi_select": [{"name": t[:100]} for t in tags[:12]]}
+    if locations:
+        props["Locations"] = {"multi_select": [{"name": l[:100]} for l in locations[:12]]}
+    if key_points:
+        props["AI Key Points"] = {"rich_text": [{"type": "text", "text": {"content": key_points[:2000]}}]}
+
+    thoughts = why_we_care
+    if added_by:
+        thoughts = f"{thoughts}\n\nAdded by hand via the portal by {added_by}.".strip()
+    if thoughts:
+        props["Lambeth Cyclist Thoughts"] = {
+            "rich_text": [{"type": "text", "text": {"content": thoughts[:2000]}}]
+        }
+
+    if deadline:
+        props["Consultation Deadline"] = {"date": {"start": deadline}}
+    if main_link:
+        props["Link to Consultation"] = {"url": main_link}
+    if owner:
+        props[OWNER_PROP] = {"select": {"name": owner}}
+        props[CLAIMED_ON_PROP] = {"date": {"start": date.today().isoformat()}}
+
+    page = client().pages.create(
+        parent={"type": "data_source_id", "data_source_id": ds_id_for(get_settings().notion_items_db)},
+        properties=props,
+    )
+    return {"id": page["id"], "url": page.get("url")}

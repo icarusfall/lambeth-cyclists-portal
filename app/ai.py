@@ -6,6 +6,7 @@ low/medium to hold costs to pennies per newsletter.
 
 import logging
 from datetime import date
+from typing import Literal
 from functools import lru_cache
 
 import anthropic
@@ -34,6 +35,25 @@ def client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=get_settings().anthropic_api_key)
 
 
+def _parse_resuming(**kwargs):
+    """messages.parse(), resumed across pause_turn.
+
+    web_search and web_fetch run on Anthropic's servers, and a turn using them
+    can come back with stop_reason "pause_turn" before the model has finished.
+    Parsing that response still yields a schema-valid object — but one the
+    model filled with stubs rather than findings, which is worse than an
+    error because it looks like an answer. Resume until the turn really ends.
+    """
+    convo = list(kwargs.pop("messages"))
+    response = None
+    for _ in range(5):
+        response = client().messages.parse(messages=convo, **kwargs)
+        if response.stop_reason != "pause_turn":
+            return response
+        convo = convo + [{"role": "assistant", "content": response.content}]
+    return response
+
+
 VOICE = (
     "Lambeth Cyclists is the Lambeth branch of the London Cycling Campaign, a "
     "friendly volunteer-run advocacy group in South London. The newsletter voice is "
@@ -53,7 +73,7 @@ def suggest_stories(
             "the same ground:\n"
             + "\n".join(f"- {h}" for h in existing_headlines)
         )
-    response = client().messages.parse(
+    response = _parse_resuming(
         model=MODEL,
         max_tokens=4096,
         output_config={"effort": "low"},
@@ -83,7 +103,7 @@ def suggest_stories(
 def news_scan(existing_headlines: list[str]) -> list[Story]:
     """Web-search for recent Lambeth cycling news not already covered by our items."""
     already = "\n".join(f"- {h}" for h in existing_headlines) or "(none)"
-    response = client().messages.parse(
+    response = _parse_resuming(
         model=MODEL,
         max_tokens=8000,
         output_config={"effort": "medium"},
@@ -201,3 +221,102 @@ def draft_newsletter(
         ],
     )
     return next(b.text for b in response.content if b.type == "text").strip()
+
+
+# ---------------------------------------------------------------------------
+# Adding something by hand
+# ---------------------------------------------------------------------------
+# Not everything arrives by email. Someone mentions a scheme in a meeting or
+# on WhatsApp, and we want it on the list without anyone opening Notion.
+# The member pastes links; Claude reads them and proposes the fields.
+
+PROJECT_TYPES = ("traffic_order", "consultation", "infrastructure_project", "event", "other")
+ACTIONS = ("response_needed", "information_only", "monitoring", "urgent_action")
+PRIORITIES = ("critical", "high", "medium", "low")
+
+
+class ItemSuggestion(BaseModel):
+    title: str = Field(description="Short, specific, how a committee member would refer to it")
+    summary: str = Field(description="2-3 sentences: what it is and why it matters for cycling in Lambeth")
+    project_type: Literal[PROJECT_TYPES]
+    action_required: Literal[ACTIONS] = Field(
+        description="response_needed only if there is a consultation we can actually respond to; "
+        "monitoring if it is a scheme to keep an eye on; information_only if purely for the record"
+    )
+    priority: Literal[PRIORITIES]
+    tags: list[str] = Field(description="Reuse the existing tag vocabulary given below wherever one fits")
+    locations: list[str] = Field(
+        description="The specific streets, junctions or areas involved. Always "
+        "name the actual street, even if it is not already in the list below"
+    )
+    key_points: str = Field(description="Markdown bullet list, one '- ' per line, of the things worth knowing")
+    why_we_care: str = Field(description="One or two sentences on what Lambeth Cyclists should watch for")
+    deadline: str | None = Field(default=None, description="ISO date (YYYY-MM-DD) of any consultation deadline, else null")
+    main_link: str | None = Field(default=None, description="The most useful of the supplied links for a reader")
+    unreachable: list[str] = Field(default_factory=list, description="Any supplied links you could not read")
+
+
+def suggest_item_fields(
+    links: list[str],
+    note: str,
+    tag_vocabulary: list[str],
+    location_vocabulary: list[str],
+) -> ItemSuggestion:
+    """Read the supplied links and propose Notion field values for a new item.
+
+    web_fetch only retrieves URLs already present in the conversation, so the
+    pasted links are the whole of its reach — it cannot wander.
+    """
+    listed = "\n".join(f"- {u}" for u in links) or "(none supplied)"
+    response = _parse_resuming(
+        model=MODEL,
+        max_tokens=8000,
+        output_config={"effort": "medium"},
+        system=VOICE,
+        tools=[
+            {
+                "type": "web_fetch_20260209",
+                "name": "web_fetch",
+                "max_uses": 8,
+                "max_content_tokens": 30000,
+            }
+        ],
+        messages=[
+            {
+                "role": "user",
+                "content": (
+                    f"Today is {date.today().isoformat()}.\n\n"
+                    "A committee member is adding something to our tracker by hand — it "
+                    "did not arrive by email. Read the links below and propose the field "
+                    "values for the new entry.\n\n"
+                    f"## Links\n{listed}\n\n"
+                    f"## What they told us\n{note or '(nothing beyond the links)'}\n\n"
+                    f"## Existing tags — reuse these rather than inventing new ones unless nothing fits\n"
+                    f"{', '.join(tag_vocabulary)}\n\n"
+                    f"## Location names already in use - match these spellings where they "
+                    f"apply, but add the specific street or junction if it is not listed\n"
+                    f"{', '.join(location_vocabulary[:150])}\n\n"
+                    "Fetch each link before judging it. If a link cannot be read, list it "
+                    "in `unreachable` and work from the others — do not guess at its "
+                    "contents. Base every field on what the pages actually say plus what "
+                    "the member told you; if something is genuinely unclear, keep the "
+                    "summary cautious rather than inventing detail. Set action_required "
+                    "to response_needed only where there is a live consultation we could "
+                    "actually reply to."
+                ),
+            }
+        ],
+        output_format=ItemSuggestion,
+    )
+    suggestion = response.parsed_output
+
+    # A paused or otherwise unfinished turn can still satisfy the schema, with
+    # stub text in the free-form fields. That is worse than an error, because
+    # it looks like an answer and would be written to Notion as one.
+    stubs = {"placeholder", "todo", "n/a", "none", "unknown", "tbc", ""}
+    if suggestion.title.strip().lower() in stubs or suggestion.summary.strip().lower() in stubs:
+        raise RuntimeError(
+            "The model did not finish reading those pages (it returned stub text). "
+            "Try again, or add a line of your own about what this is."
+        )
+    return suggestion

@@ -365,11 +365,14 @@ class TriageResult(BaseModel):
     reasoning: str = Field(description="Two or three sentences on how you grouped things")
 
 
-def propose_projects(items: list[dict], existing_projects: list[str]) -> TriageResult:
+def propose_projects(items: list[dict], projects: list[dict]) -> TriageResult:
     """Group filed items into projects worth tracking.
 
-    `items` are dicts with number/title/summary/type/locations/date. Returns
-    proposals for a human to accept or reject — nothing is written here.
+    `projects` comes from notion.projects_for_matching(): title, description,
+    type and whether it is a standing sweep. Descriptions matter — a sweep
+    like "Controlled Parking Zones" only works if the model can read that it
+    exists to absorb every CPZ notice. Returns proposals for a human to
+    accept or reject; nothing is written here.
     """
     listing = []
     for it in items:
@@ -380,7 +383,23 @@ def propose_projects(items: list[dict], existing_projects: list[str]) -> TriageR
             f"locations: {', '.join(it.get('locations') or []) or '-'}\n"
             f"     {(it.get('summary') or '(no summary)')[:400]}"
         )
-    existing = "\n".join(f"- {p}" for p in existing_projects) or "(none yet)"
+
+    standing, normal = [], []
+    for pr in projects:
+        line = f"- {pr['title']}"
+        if pr.get("description"):
+            line += f"\n    {pr['description'][:300]}"
+        (standing if pr.get("standing") else normal).append(line)
+
+    existing_block = ""
+    if standing:
+        existing_block += (
+            "### Standing projects\n"
+            "These exist precisely to absorb recurring routine items. If an item "
+            "touches one of these subjects at all, sweep it in here — it does not "
+            "get a project of its own.\n" + "\n".join(standing) + "\n\n"
+        )
+    existing_block += "### Other current projects\n" + ("\n".join(normal) or "(none yet)")
 
     response = _parse_resuming(
         model=MODEL,
@@ -394,22 +413,29 @@ def propose_projects(items: list[dict], existing_projects: list[str]) -> TriageR
                 "content": (
                     f"Today is {date.today().isoformat()}.\n\n"
                     "Below are items filed from our inbox — consultations, traffic orders, "
-                    "infrastructure notices and general correspondence. They have never been "
-                    "sorted. Group them into the projects we should actually be tracking.\n\n"
-                    f"## Projects we already have\n{existing}\n\n"
+                    "infrastructure notices and general correspondence. Sort them.\n\n"
+                    f"## Projects we already track\n{existing_block}\n\n"
                     f"## Filed items\n\n" + "\n\n".join(listing) + "\n\n"
-                    "A project is something with a life beyond one email: a scheme we will "
-                    "follow through several consultations, a corridor we keep returning to, "
-                    "a campaign. Several items about the same road or scheme belong to one "
-                    "project — that grouping is the main thing we want from you.\n\n"
-                    "Where items belong to a project we already have, set matches_existing to "
-                    "its exact title and do not invent a near-duplicate.\n\n"
-                    "Put an item in not_relevant only if it genuinely needs no follow-up: a "
-                    "one-off notice, an event that has passed, routine correspondence. When "
-                    "in doubt, group it rather than discarding it — a volunteer can always "
-                    "reject a proposal, but nobody will re-read what you drop.\n\n"
-                    "Do not propose a project for a single trivial item just to place it. "
-                    "Fewer, more meaningful projects are better than one per item."
+                    "### How to decide\n"
+                    "Work down this list and stop at the first that fits.\n\n"
+                    "1. Does it belong to a project we already have? Set matches_existing "
+                    "to that project's exact title. This is by far the most common right "
+                    "answer, and it is your default.\n"
+                    "2. Does it need no follow-up at all? Put it in not_relevant: one-off "
+                    "notices, events that have passed, routine correspondence.\n"
+                    "3. Only then, does it deserve a new project? A new project has to "
+                    "clear a high bar — a scheme with a life across several consultations, "
+                    "a corridor we will keep returning to, or a campaign we would actually "
+                    "run. Several items about the same road or scheme make one project, "
+                    "not several.\n\n"
+                    "Never create a project that overlaps one listed above; extend that one "
+                    "instead. Do not create a project for a single routine notice. A borough "
+                    "the size of Lambeth generates these constantly, and a project per notice "
+                    "produces a list nobody reads — err towards fewer, larger, longer-lived "
+                    "projects.\n\n"
+                    "If several items would each be too slight on their own but share a "
+                    "theme that will clearly keep recurring, say so in reasoning: we may "
+                    "want a new standing project for it."
                 ),
             }
         ],

@@ -1,70 +1,120 @@
-{# Proposed groupings. Nothing here is in Notion yet. #}
-<h2>Suggested projects</h2>
+{# Proposals, ordered by how much each costs you. Sweeping into a project we
+   already run is one press. Starting a new project sits at the bottom behind
+   a fold, and offers the cheaper alternative first. #}
+
 {% if reasoning %}<p class="muted small">{{ reasoning }}</p>{% endif %}
 
-{% for prop in proposals %}
-{% set p = prop.p %}
-<div class="card proposal" id="proposal-{{ prop.index }}">
-  <div class="item-meta">
-    {% if p.matches_existing %}
-      <span class="tag with">Adds to: {{ p.matches_existing }}</span>
-    {% else %}
-      <span class="chip">new project</span>
-    {% endif %}
-    <span class="chip">{{ p.project_type|replace('_',' ') }}</span>
-    <span class="chip">{{ p.geographic_scope|replace('_',' ') }}</span>
-    <span class="chip">{{ p.priority }}</span>
-  </div>
-
-  <strong class="item-title">{{ p.title }}</strong>
-  <p class="item-summary">{{ p.description }}</p>
-
-  {% if p.next_action %}
-  <p class="small"><strong>Next thing to do:</strong> {{ p.next_action }}</p>
-  {% endif %}
-
+{% macro items_detail(members) %}
   <details class="proposal-items">
-    <summary class="muted small">{{ prop['items']|length }} item{{ 's' if prop['items']|length != 1 }} would move into this</summary>
-    <ul class="props">
-      {% for it in prop['items'] %}<li class="small">{{ it.title }}</li>{% endfor %}
-    </ul>
+    <summary class="muted small">{{ members|length }} item{{ 's' if members|length != 1 }}</summary>
+    <ul class="props">{% for it in members %}<li class="small">{{ it.title }}</li>{% endfor %}</ul>
   </details>
+{% endmacro %}
 
+{% macro hidden(p, members) %}
+  <input type="hidden" name="description" value="{{ p.description }}">
+  <input type="hidden" name="project_type" value="{{ p.project_type }}">
+  <input type="hidden" name="geographic_scope" value="{{ p.geographic_scope }}">
+  <input type="hidden" name="priority" value="{{ p.priority }}">
+  <input type="hidden" name="primary_locations" value="{{ p.primary_locations|join(', ') }}">
+  <input type="hidden" name="next_action" value="{{ p.next_action }}">
+  <input type="hidden" name="item_ids" value="{{ members|map(attribute='id')|join(',') }}">
+{% endmacro %}
+
+{# ---------- Sweeps: the encouraged path ---------- #}
+{% if sweeps %}
+<h2>Goes into something we already run</h2>
+<p class="muted small">No new project needed. One press each.</p>
+
+{% for prop in sweeps %}
+{% set p = prop.p %}
+<div class="card sweep" id="proposal-{{ prop.index }}">
+  <strong class="item-title">{{ p.matches_existing }}</strong>
+  {% if p.next_action %}<p class="item-summary">{{ p.next_action }}</p>{% endif %}
+  {{ items_detail(prop['items']) }}
   <form hx-post="/triage/accept" hx-target="#proposal-{{ prop.index }}" hx-swap="outerHTML">
-    <input type="hidden" name="title" value="{{ p.title }}">
-    <input type="hidden" name="description" value="{{ p.description }}">
-    <input type="hidden" name="project_type" value="{{ p.project_type }}">
-    <input type="hidden" name="geographic_scope" value="{{ p.geographic_scope }}">
-    <input type="hidden" name="priority" value="{{ p.priority }}">
-    <input type="hidden" name="primary_locations" value="{{ p.primary_locations|join(', ') }}">
-    <input type="hidden" name="next_action" value="{{ p.next_action }}">
-    <input type="hidden" name="matches_existing" value="{{ p.matches_existing or '' }}">
-    <input type="hidden" name="item_ids" value="{{ prop['items']|map(attribute='id')|join(',') }}">
+    <input type="hidden" name="title" value="{{ p.matches_existing }}">
+    <input type="hidden" name="matches_existing" value="{{ p.matches_existing }}">
+    {{ hidden(p, prop['items']) }}
     <div class="btnrow">
-      <button class="btn primary" type="submit">
-        {{ 'Add to that project' if p.matches_existing else 'Create this project' }}
-      </button>
-      <span class="htmx-indicator spinner">saving…</span>
+      <button class="btn primary" type="submit">Sweep these in</button>
+      <span class="htmx-indicator spinner">saving&hellip;</span>
     </div>
   </form>
 </div>
-{% else %}
-<p class="muted">Nothing grouped up. Odd — worth a look at the pile by hand.</p>
 {% endfor %}
+{% endif %}
 
+{# ---------- Needs nothing ---------- #}
 {% if dropped %}
+<h2>Needs no project</h2>
 <div class="card">
-  <strong>{{ dropped|length }} item{{ 's' if dropped|length != 1 }} look like they need no project</strong>
-  <details class="proposal-items">
-    <summary class="muted small">see which</summary>
-    <ul class="props">{% for it in dropped %}<li class="small">{{ it.title }}</li>{% endfor %}</ul>
-  </details>
+  <strong>{{ dropped|length }} item{{ 's' if dropped|length != 1 }}</strong>
+  <span class="muted small">one-off notices, events that have passed, routine post</span>
+  {{ items_detail(dropped) }}
   <form hx-post="/triage/dismiss" hx-target="closest .card" hx-swap="outerHTML">
     <input type="hidden" name="item_ids" value="{{ dropped|map(attribute='id')|join(',') }}">
     <div class="btnrow">
-      <button class="btn ghost" type="submit">File them away</button>
-      <span class="htmx-indicator spinner">saving…</span>
+      <button class="btn primary" type="submit">File them away</button>
+      <span class="htmx-indicator spinner">saving&hellip;</span>
     </div>
   </form>
 </div>
+{% endif %}
+
+{# ---------- New projects: the expensive path ---------- #}
+{% if new %}
+<h2>Would need a new project</h2>
+<div class="banner warn">
+  <strong>Each new project is one more thing somebody has to keep an eye on.</strong>
+  A list of thirty is a list nobody reads. Check it can&rsquo;t go into something
+  you already run first &mdash; there&rsquo;s a dropdown on each of these.
+</div>
+
+{% for prop in new %}
+{% set p = prop.p %}
+<div class="card proposal-new" id="proposal-{{ prop.index }}">
+  <div class="item-meta">
+    <span class="chip">{{ p.project_type|replace('_',' ') }}</span>
+    <span class="chip">{{ p.geographic_scope|replace('_',' ') }}</span>
+    <span class="chip{{ ' chip-strong' if p.priority in ('strategic','high') }}">{{ p.priority }}</span>
+  </div>
+  <strong class="item-title">{{ p.title }}</strong>
+  <p class="item-summary">{{ p.description }}</p>
+  {% if p.next_action %}<p class="small"><strong>Next:</strong> {{ p.next_action }}</p>{% endif %}
+  {{ items_detail(prop['items']) }}
+
+  <form hx-post="/triage/accept" hx-target="#proposal-{{ prop.index }}" hx-swap="outerHTML">
+    <input type="hidden" name="title" value="{{ p.title }}">
+    {{ hidden(p, prop['items']) }}
+    <label class="small">Put it in one of these instead
+      <select name="matches_existing" required>
+        <option value="">choose a project&hellip;</option>
+        {% for t in all_projects %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+      </select>
+    </label>
+    <div class="btnrow">
+      <button class="btn" type="submit">Use that one</button>
+      <span class="htmx-indicator spinner">saving&hellip;</span>
+    </div>
+  </form>
+
+  <details class="new-project-confirm">
+    <summary class="muted small">or start &ldquo;{{ p.title }}&rdquo; as a new project</summary>
+    <form hx-post="/triage/accept" hx-target="#proposal-{{ prop.index }}" hx-swap="outerHTML">
+      <input type="hidden" name="title" value="{{ p.title }}">
+      <input type="hidden" name="matches_existing" value="">
+      {{ hidden(p, prop['items']) }}
+      <div class="btnrow">
+        <button class="btn primary" type="submit">Yes, start it</button>
+        <span class="htmx-indicator spinner">saving&hellip;</span>
+      </div>
+    </form>
+  </details>
+</div>
+{% endfor %}
+{% endif %}
+
+{% if not sweeps and not new and not dropped %}
+<p class="muted">Nothing to propose.</p>
 {% endif %}

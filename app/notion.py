@@ -748,3 +748,33 @@ def set_items_not_relevant(item_ids: list[str]) -> int:
         except Exception:
             logger.exception("Could not close item %s", item_id)
     return done
+
+
+# Standing ("sweep") projects are permanent catch-alls for recurring routine
+# work — CPZs, dockless bays, bus priority corridors. Lambeth always has some
+# on the go, and each one individually is not worth its own project. The
+# convention is a description that opens with this marker, which is what tells
+# triage the project actively wants matching items swept into it.
+STANDING_MARKER = "Standing project."
+
+
+def projects_for_matching() -> list[dict]:
+    """Every project with enough context for triage to match against.
+
+    Titles alone are not enough: 'Controlled Parking Zones' only works as a
+    sweep if the model can read that it exists to absorb every CPZ notice.
+    """
+    out = []
+    for p in query(get_settings().notion_projects_db, limit=60):
+        props = p.get("properties", {})
+        desc = rich_text_to_str(props.get("Description", {}).get("rich_text", []))
+        out.append(
+            {
+                "title": get_page_title(p),
+                "description": desc,
+                "type": (props.get("Project Type", {}).get("select") or {}).get("name") or "",
+                "status": (props.get("Status", {}).get("select") or {}).get("name") or "",
+                "standing": desc.strip().startswith(STANDING_MARKER),
+            }
+        )
+    return out

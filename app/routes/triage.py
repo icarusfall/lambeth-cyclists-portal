@@ -23,17 +23,20 @@ router = APIRouter()
 @router.get("/triage")
 async def triage_page(request: Request, user: str = Depends(require_user)):
     error = None
-    items, projects = [], []
+    items, projects, standing = [], [], []
     try:
         items = notion.untriaged_items()
-        projects = notion.project_titles()
+        all_projects = notion.projects_for_matching()
+        projects = [p["title"] for p in all_projects]
+        standing = [p["title"] for p in all_projects if p["standing"]]
     except Exception as e:
         logger.exception("Triage queue failed to load")
         error = f"Couldn't load the queue from Notion: {e}"
     return templates.TemplateResponse(
         request,
         "triage.html",
-        {"user": user, "items": items, "projects": projects, "error": error},
+        {"user": user, "items": items, "projects": projects,
+         "standing": standing, "error": error},
     )
 
 
@@ -46,7 +49,7 @@ async def propose(request: Request, user: str = Depends(require_user)):
             return templates.TemplateResponse(
                 request, "partials/_error.html", {"error": "Nothing left to sort."}
             )
-        result = ai.propose_projects(items, notion.project_titles())
+        result = ai.propose_projects(items, notion.projects_for_matching())
     except Exception as e:
         logger.exception("Triage proposal failed")
         return templates.TemplateResponse(
@@ -66,10 +69,20 @@ async def propose(request: Request, user: str = Depends(require_user)):
         "Triage proposed %d project(s) over %d item(s); %d marked not relevant",
         len(proposals), len(items), len(dropped),
     )
+    # Sweeps into projects we already run are the cheap, encouraged path;
+    # brand-new projects are shown separately and need a deliberate press.
+    sweeps = [p for p in proposals if p["p"].matches_existing]
+    new = [p for p in proposals if not p["p"].matches_existing]
     return templates.TemplateResponse(
         request,
         "partials/_triage_proposals.html",
-        {"proposals": proposals, "dropped": dropped, "reasoning": result.reasoning},
+        {
+            "sweeps": sweeps,
+            "new": new,
+            "dropped": dropped,
+            "reasoning": result.reasoning,
+            "all_projects": [p["title"] for p in notion.projects_for_matching()],
+        },
     )
 
 

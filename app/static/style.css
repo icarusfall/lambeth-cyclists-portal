@@ -209,3 +209,10 @@ select {
 .proposal-items { margin: 8px 0; }
 .proposal-items summary { cursor: pointer; }
 .card.done { border-color: #bfe0ca; }
+
+/* Sweeps read as cheap; new projects read as a commitment */
+.card.sweep { border-left: 3px solid var(--green); }
+.card.proposal-new { border-left: 3px solid var(--warn-border); }
+.new-project-confirm { margin-top: 10px; padding-top: 10px; border-top: 1px solid #eef2ee; }
+.new-project-confirm summary { cursor: pointer; }
+.chip-strong { border-color: var(--err); color: var(--err); }

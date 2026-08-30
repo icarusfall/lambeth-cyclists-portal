@@ -14,8 +14,12 @@
   <p>
     <strong>{{ items|length }} item{{ 's' if items|length != 1 }}</strong> unsorted.
     {% if projects %}
-      We currently track {{ projects|length }} project{{ 's' if projects|length != 1 }}:
-      {{ projects|join(', ') }}.
+      We track {{ projects|length }} project{{ 's' if projects|length != 1 }}.
+      {% if standing %}
+      <span class="muted">{{ standing|length }} of them are standing projects
+      ({{ standing|join(', ') }}) that recurring items get swept into rather
+      than spawning something new.</span>
+      {% endif %}
     {% else %}
       No projects yet &mdash; this is where they come from.
     {% endif %}

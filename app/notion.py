@@ -865,3 +865,68 @@ def item_detail(page_id: str) -> dict:
         "attachments": _attachments(rt("Attachment URLs")),
         "project": project,
     }
+
+
+# ---------------------------------------------------------------------------
+# Is the email pipeline actually working?
+# ---------------------------------------------------------------------------
+# The processor writes placeholder text and carries on when a Claude call
+# fails, so a broken pipeline looks identical to a quiet one from the outside:
+# items keep arriving, they just say nothing. That went unnoticed for six
+# weeks. This is the check that makes it visible to everyone, not just to
+# whoever reads the Railway alerts.
+
+_FAILURE_MARKERS = ("Error analyzing email content", "Error during AI analysis")
+
+# Mail arrives roughly fortnightly, so a fortnight of silence is normal and
+# three weeks is worth a look — long enough not to cry wolf over a quiet spell.
+QUIET_DAYS = 21
+
+
+def pipeline_health(sample: int = 60) -> dict:
+    """A verdict on the email pipeline, from the items it has produced."""
+    rows = query(
+        get_settings().notion_items_db,
+        sorts=[{"property": "Date Received", "direction": "descending"}],
+        limit=sample,
+    )
+
+    failed, newest, newest_good = [], None, None
+    for page in rows:
+        props = page.get("properties", {})
+        blob = rich_text_to_str(props.get("Summary", {}).get("rich_text", [])) + rich_text_to_str(
+            props.get("AI Key Points", {}).get("rich_text", [])
+        )
+        received = get_date_prop(page, "Date Received")
+        if received and (newest is None or received > newest):
+            newest = received
+
+        if any(m in blob for m in _FAILURE_MARKERS):
+            failed.append({"id": page["id"], "title": get_page_title(page), "received": received})
+        elif received and (newest_good is None or received > newest_good):
+            newest_good = received
+
+    quiet_for = (date.today() - newest).days if newest else None
+
+    # Recency matters more than the count: five failures from July that have
+    # since been fixed are history, five from this week are an outage.
+    recent_failures = [
+        f for f in failed if f["received"] and (date.today() - f["received"]).days <= 30
+    ]
+
+    if recent_failures:
+        state = "broken"
+    elif quiet_for is not None and quiet_for > QUIET_DAYS:
+        state = "quiet"
+    else:
+        state = "ok"
+
+    return {
+        "state": state,
+        "failed": sorted(failed, key=lambda f: f["received"] or date.min, reverse=True),
+        "recent_failures": len(recent_failures),
+        "newest": newest,
+        "newest_good": newest_good,
+        "quiet_for": quiet_for,
+        "quiet_days": QUIET_DAYS,
+    }

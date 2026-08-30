@@ -221,3 +221,7 @@ a.item-title { font-size: 17px; font-weight: 600; text-decoration: none; display
 a.item-title:hover { text-decoration: underline; }
 .prose p:first-child { margin-top: 0; }
 .prose ul { padding-left: 20px; }
+
+.banner.err-banner { background: #fbeaea; border: 1px solid #e6baba; }
+.banner details { margin-top: 8px; }
+.banner summary { cursor: pointer; }

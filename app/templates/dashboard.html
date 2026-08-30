@@ -11,6 +11,8 @@
 {% endif %}
 
 {% if error %}<p class="flash err">{{ error }}</p>{% endif %}
+
+{% if health %}{% include "partials/_pipeline_health.html" %}{% endif %}
 {% if request.query_params.get('added') %}
 <p class="flash ok big">Added to the tracker. It&rsquo;s on the list now.</p>
 {% endif %}

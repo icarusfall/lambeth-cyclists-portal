@@ -14,6 +14,7 @@ router = APIRouter()
 async def home(request: Request, user: str = Depends(require_user)):
     error = None
     meetings, recent, drafts = [], [], []
+    health = None
     unclaimed, mine = [], []
     try:
         meetings = notion.upcoming_meetings()
@@ -22,6 +23,13 @@ async def home(request: Request, user: str = Depends(require_user)):
     except Exception as e:
         logger.exception("Dashboard Notion queries failed")
         error = f"Couldn't load data from Notion: {e}"
+
+    # Whether the pipeline is reading what it files. Never fatal to the page:
+    # a health check that takes the dashboard down with it is worse than none.
+    try:
+        health = notion.pipeline_health()
+    except Exception:
+        logger.exception("Pipeline health check failed")
 
     # The board proper. Kept in its own try so that a missing Owner field
     # (i.e. scripts/add_ownership_fields.py has not been run yet) degrades to
@@ -47,6 +55,7 @@ async def home(request: Request, user: str = Depends(require_user)):
             "unclaimed": unclaimed,
             "mine": mine,
             "board_error": board_error,
+            "health": health,
             "recent": recent,
             "drafts": drafts,
             "error": error,

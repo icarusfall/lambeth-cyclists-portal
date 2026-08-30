@@ -1,0 +1,25 @@
+{# Whether the email pipeline is actually reading what it files. Shown to
+   everyone, not just whoever gets the Railway alerts. #}
+{% if health.state == 'broken' %}
+<div class="banner err-banner">
+  <strong>{{ health.recent_failures }} email{{ 's' if health.recent_failures != 1 }} arrived recently but {{ 'was' if health.recent_failures == 1 else 'were' }} never read.</strong>
+  They were filed, but the AI analysis failed, so their summaries are
+  placeholder text rather than a description of the email. Usually this means
+  the processor needs attention.
+  <details>
+    <summary class="small">which ones</summary>
+    <ul class="props">
+      {% for f in health.failed %}
+      <li class="small"><a href="/items/{{ f.id }}">{{ f.title }}</a>
+        <span class="muted">{{ f.received|humandate }}</span></li>
+      {% endfor %}
+    </ul>
+  </details>
+</div>
+{% elif health.state == 'quiet' %}
+<div class="banner warn">
+  <strong>Nothing has come in for {{ health.quiet_for }} days.</strong>
+  That may just be a quiet spell &mdash; post usually arrives every week or
+  two &mdash; but it is worth checking the processor is still running.
+</div>
+{% endif %}

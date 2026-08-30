@@ -669,6 +669,19 @@ def find_project_by_title(title: str) -> str | None:
     return None
 
 
+
+# Multi-select options are permanent once created, so a vague catch-all like
+# "Various roads, borough-wide" pollutes the vocabulary for good. Geographic
+# Scope already records breadth; Primary Locations should be real places.
+_NOT_PLACES = ("various", "borough-wide", "borough wide", "multiple", "several",
+               "n/a", "none", "tbc", "unknown", "-")
+
+
+def _is_a_place(name: str) -> bool:
+    low = name.strip().lower()
+    return bool(low) and not any(bad in low for bad in _NOT_PLACES)
+
+
 def create_project(
     *,
     title: str,
@@ -689,10 +702,9 @@ def create_project(
         "Status": {"select": {"name": "planning"}},
         "Start Date": {"date": {"start": date.today().isoformat()}},
     }
-    if primary_locations:
-        props["Primary Locations"] = {
-            "multi_select": [{"name": l[:100]} for l in primary_locations[:12]]
-        }
+    places = [l for l in (x.strip() for x in primary_locations) if _is_a_place(l)]
+    if places:
+        props["Primary Locations"] = {"multi_select": [{"name": l[:100]} for l in places[:12]]}
     if next_action:
         props["Next Action"] = {"rich_text": [{"type": "text", "text": {"content": next_action[:2000]}}]}
 

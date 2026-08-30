@@ -45,9 +45,11 @@ def _parse_resuming(**kwargs):
     error because it looks like an answer. Resume until the turn really ends.
     """
     convo = list(kwargs.pop("messages"))
+    timeout = kwargs.pop("timeout", None)
+    api = client().with_options(timeout=timeout) if timeout else client()
     response = None
     for _ in range(5):
-        response = client().messages.parse(messages=convo, **kwargs)
+        response = api.messages.parse(messages=convo, **kwargs)
         if response.stop_reason != "pause_turn":
             return response
         convo = convo + [{"role": "assistant", "content": response.content}]
@@ -320,3 +322,97 @@ def suggest_item_fields(
             "Try again, or add a line of your own about what this is."
         )
     return suggestion
+
+
+# ---------------------------------------------------------------------------
+# Triage: turning a pile of filed items into projects
+# ---------------------------------------------------------------------------
+# Items are leads. Projects are the work. Nothing currently carries a lead
+# across that gap, which is why 49 items sat at status "new" for months.
+#
+# Deliberately one call over the whole backlog rather than one per item: the
+# useful judgement is that five separate emails are the same scheme, and a
+# per-item pass cannot see that.
+
+PROJECT_KINDS = (
+    "infrastructure_campaign", "campaigning", "research",
+    "partnership", "ongoing_monitoring", "membership",
+)
+SCOPES = ("single_street", "neighbourhood", "borough_wide", "cross_borough")
+PROJECT_PRIORITIES = ("strategic", "high", "medium", "low")
+
+
+class ProjectProposal(BaseModel):
+    title: str = Field(description="What the committee would call this, e.g. 'Acre Lane bus priority'")
+    description: str = Field(description="3-4 sentences: what it is, where it stands, why we are tracking it")
+    project_type: Literal[PROJECT_KINDS]
+    geographic_scope: Literal[SCOPES]
+    priority: Literal[PROJECT_PRIORITIES]
+    primary_locations: list[str]
+    next_action: str = Field(description="The single most useful next thing a volunteer could do")
+    item_numbers: list[int] = Field(description="Numbers of the listed items that belong to this project")
+    matches_existing: str | None = Field(
+        default=None,
+        description="Exact title of an existing project if these items belong to it, else null",
+    )
+
+
+class TriageResult(BaseModel):
+    proposals: list[ProjectProposal]
+    not_relevant: list[int] = Field(
+        description="Item numbers that are genuinely just for the record and need no project"
+    )
+    reasoning: str = Field(description="Two or three sentences on how you grouped things")
+
+
+def propose_projects(items: list[dict], existing_projects: list[str]) -> TriageResult:
+    """Group filed items into projects worth tracking.
+
+    `items` are dicts with number/title/summary/type/locations/date. Returns
+    proposals for a human to accept or reject — nothing is written here.
+    """
+    listing = []
+    for it in items:
+        listing.append(
+            f"[{it['number']}] {it['title']}\n"
+            f"     type: {it.get('project_type') or '?'} | "
+            f"received: {it.get('received') or '?'} | "
+            f"locations: {', '.join(it.get('locations') or []) or '-'}\n"
+            f"     {(it.get('summary') or '(no summary)')[:400]}"
+        )
+    existing = "\n".join(f"- {p}" for p in existing_projects) or "(none yet)"
+
+    response = _parse_resuming(
+        model=MODEL,
+        max_tokens=16000,
+        output_config={"effort": "high"},
+        timeout=600.0,
+        system=VOICE,
+        messages=[
+            {
+                "role": "user",
+                "content": (
+                    f"Today is {date.today().isoformat()}.\n\n"
+                    "Below are items filed from our inbox — consultations, traffic orders, "
+                    "infrastructure notices and general correspondence. They have never been "
+                    "sorted. Group them into the projects we should actually be tracking.\n\n"
+                    f"## Projects we already have\n{existing}\n\n"
+                    f"## Filed items\n\n" + "\n\n".join(listing) + "\n\n"
+                    "A project is something with a life beyond one email: a scheme we will "
+                    "follow through several consultations, a corridor we keep returning to, "
+                    "a campaign. Several items about the same road or scheme belong to one "
+                    "project — that grouping is the main thing we want from you.\n\n"
+                    "Where items belong to a project we already have, set matches_existing to "
+                    "its exact title and do not invent a near-duplicate.\n\n"
+                    "Put an item in not_relevant only if it genuinely needs no follow-up: a "
+                    "one-off notice, an event that has passed, routine correspondence. When "
+                    "in doubt, group it rather than discarding it — a volunteer can always "
+                    "reject a proposal, but nobody will re-read what you drop.\n\n"
+                    "Do not propose a project for a single trivial item just to place it. "
+                    "Fewer, more meaningful projects are better than one per item."
+                ),
+            }
+        ],
+        output_format=TriageResult,
+    )
+    return response.parsed_output

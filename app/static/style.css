@@ -203,3 +203,9 @@ select {
   border: 1px solid var(--border); border-radius: 8px;
   font-size: 16px; font-family: inherit; color: var(--text); background: #fff;
 }
+
+/* --- Triage --- */
+.proposal { border-left: 3px solid var(--green); }
+.proposal-items { margin: 8px 0; }
+.proposal-items summary { cursor: pointer; }
+.card.done { border-color: #bfe0ca; }

@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% block title %}Sorting the inbox — Lambeth Cyclists{% endblock %}
+{% block content %}
+<h1>Sorting the inbox</h1>
+<p class="muted lede">
+  Everything the email watcher has filed, plus anything added by hand, sitting
+  in one pile. The job is to work out which of it belongs to something
+  we&rsquo;re actually tracking &mdash; and what that something is.
+</p>
+
+{% if error %}<p class="flash err">{{ error }}</p>{% endif %}
+
+<div class="card">
+  <p>
+    <strong>{{ items|length }} item{{ 's' if items|length != 1 }}</strong> unsorted.
+    {% if projects %}
+      We currently track {{ projects|length }} project{{ 's' if projects|length != 1 }}:
+      {{ projects|join(', ') }}.
+    {% else %}
+      No projects yet &mdash; this is where they come from.
+    {% endif %}
+  </p>
+  <p class="muted small">
+    Claude reads the whole pile at once &mdash; that&rsquo;s how it spots that five
+    separate emails are all the same scheme. Nothing is saved until you accept a
+    suggestion, and you can reject any of them. Clearing this backlog takes a few
+    minutes; after that there are only ever a handful of new items a week.
+  </p>
+  {% if items %}
+  <form hx-post="/triage/propose" hx-target="#proposals" hx-swap="innerHTML" hx-indicator="#thinking">
+    <div class="btnrow">
+      <button class="btn primary" type="submit">Suggest how these group up</button>
+      <span id="thinking" class="htmx-indicator spinner">reading all {{ items|length }} of them &mdash; the first sort takes a few minutes, later ones are quick&hellip;</span>
+    </div>
+  </form>
+  {% endif %}
+</div>
+
+<div id="proposals"></div>
+
+{% if items %}
+<section>
+  <div class="section-head">
+    <h2>What&rsquo;s in the pile</h2>
+    <span class="muted small">newest first</span>
+  </div>
+  {% for item in items %}
+  <div class="card slim">
+    <span class="muted small">{{ item.number }}</span>
+    <strong>{{ item.title }}</strong>
+    <span class="muted small">{{ item.props.get('Project Type', '')|replace('_',' ') }} &middot; {{ item.received }}</span>
+  </div>
+  {% endfor %}
+</section>
+{% endif %}
+{% endblock %}

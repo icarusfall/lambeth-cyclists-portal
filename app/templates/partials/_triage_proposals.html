@@ -1,0 +1,70 @@
+{# Proposed groupings. Nothing here is in Notion yet. #}
+<h2>Suggested projects</h2>
+{% if reasoning %}<p class="muted small">{{ reasoning }}</p>{% endif %}
+
+{% for prop in proposals %}
+{% set p = prop.p %}
+<div class="card proposal" id="proposal-{{ prop.index }}">
+  <div class="item-meta">
+    {% if p.matches_existing %}
+      <span class="tag with">Adds to: {{ p.matches_existing }}</span>
+    {% else %}
+      <span class="chip">new project</span>
+    {% endif %}
+    <span class="chip">{{ p.project_type|replace('_',' ') }}</span>
+    <span class="chip">{{ p.geographic_scope|replace('_',' ') }}</span>
+    <span class="chip">{{ p.priority }}</span>
+  </div>
+
+  <strong class="item-title">{{ p.title }}</strong>
+  <p class="item-summary">{{ p.description }}</p>
+
+  {% if p.next_action %}
+  <p class="small"><strong>Next thing to do:</strong> {{ p.next_action }}</p>
+  {% endif %}
+
+  <details class="proposal-items">
+    <summary class="muted small">{{ prop['items']|length }} item{{ 's' if prop['items']|length != 1 }} would move into this</summary>
+    <ul class="props">
+      {% for it in prop['items'] %}<li class="small">{{ it.title }}</li>{% endfor %}
+    </ul>
+  </details>
+
+  <form hx-post="/triage/accept" hx-target="#proposal-{{ prop.index }}" hx-swap="outerHTML">
+    <input type="hidden" name="title" value="{{ p.title }}">
+    <input type="hidden" name="description" value="{{ p.description }}">
+    <input type="hidden" name="project_type" value="{{ p.project_type }}">
+    <input type="hidden" name="geographic_scope" value="{{ p.geographic_scope }}">
+    <input type="hidden" name="priority" value="{{ p.priority }}">
+    <input type="hidden" name="primary_locations" value="{{ p.primary_locations|join(', ') }}">
+    <input type="hidden" name="next_action" value="{{ p.next_action }}">
+    <input type="hidden" name="matches_existing" value="{{ p.matches_existing or '' }}">
+    <input type="hidden" name="item_ids" value="{{ prop['items']|map(attribute='id')|join(',') }}">
+    <div class="btnrow">
+      <button class="btn primary" type="submit">
+        {{ 'Add to that project' if p.matches_existing else 'Create this project' }}
+      </button>
+      <span class="htmx-indicator spinner">saving…</span>
+    </div>
+  </form>
+</div>
+{% else %}
+<p class="muted">Nothing grouped up. Odd — worth a look at the pile by hand.</p>
+{% endfor %}
+
+{% if dropped %}
+<div class="card">
+  <strong>{{ dropped|length }} item{{ 's' if dropped|length != 1 }} look like they need no project</strong>
+  <details class="proposal-items">
+    <summary class="muted small">see which</summary>
+    <ul class="props">{% for it in dropped %}<li class="small">{{ it.title }}</li>{% endfor %}</ul>
+  </details>
+  <form hx-post="/triage/dismiss" hx-target="closest .card" hx-swap="outerHTML">
+    <input type="hidden" name="item_ids" value="{{ dropped|map(attribute='id')|join(',') }}">
+    <div class="btnrow">
+      <button class="btn ghost" type="submit">File them away</button>
+      <span class="htmx-indicator spinner">saving…</span>
+    </div>
+  </form>
+</div>
+{% endif %}

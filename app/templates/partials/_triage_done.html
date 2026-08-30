@@ -1,0 +1,7 @@
+<div class="card done">
+  <p class="flash ok">
+    {{ verb|capitalize }} <strong>{{ title }}</strong>{% if attached %},
+    with {{ attached }} item{{ 's' if attached != 1 }} moved into it{% endif %}.
+    {% if url %}<a href="{{ url }}" target="_blank" class="muted small">Open it</a>{% endif %}
+  </p>
+</div>

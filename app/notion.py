@@ -625,3 +625,114 @@ def create_item(
         properties=props,
     )
     return {"id": page["id"], "url": page.get("url")}
+
+
+# ---------------------------------------------------------------------------
+# Triage: leads -> projects
+# ---------------------------------------------------------------------------
+
+
+def untriaged_items(limit: int = 60) -> list[dict]:
+    """Items nobody has sorted yet: still 'new' and attached to no project."""
+    results = query(
+        get_settings().notion_items_db,
+        filter_obj={
+            "and": [
+                {"property": "Status", "select": {"equals": "new"}},
+                {"property": "Related Project", "relation": {"is_empty": True}},
+            ]
+        },
+        sorts=[{"property": "Date Received", "direction": "descending"}],
+        limit=limit,
+    )
+    out = []
+    for n, raw in enumerate(results, start=1):
+        item = simplify_page(raw)
+        item["number"] = n
+        item["received"] = str(get_date_prop(raw, "Date Received") or "")
+        item["project_type"] = item["props"].get("Project Type")
+        locs = raw["properties"].get("Locations", {}).get("multi_select", [])
+        item["locations"] = [o["name"] for o in locs]
+        item["summary"] = item["props"].get("Summary", "")
+        out.append(item)
+    return out
+
+
+def project_titles() -> list[str]:
+    return [get_page_title(p) for p in query(get_settings().notion_projects_db, limit=50)]
+
+
+def find_project_by_title(title: str) -> str | None:
+    for p in query(get_settings().notion_projects_db, limit=50):
+        if get_page_title(p).strip().lower() == title.strip().lower():
+            return p["id"]
+    return None
+
+
+def create_project(
+    *,
+    title: str,
+    description: str,
+    project_type: str,
+    geographic_scope: str,
+    priority: str,
+    primary_locations: list[str],
+    next_action: str,
+) -> dict:
+    """Create a Projects page. Status starts at 'planning'."""
+    props: dict = {
+        "Project Name": {"title": [{"type": "text", "text": {"content": title[:200]}}]},
+        "Description": {"rich_text": [{"type": "text", "text": {"content": description[:2000]}}]},
+        "Project Type": {"select": {"name": project_type}},
+        "Geographic Scope": {"select": {"name": geographic_scope}},
+        "Priority": {"select": {"name": priority}},
+        "Status": {"select": {"name": "planning"}},
+        "Start Date": {"date": {"start": date.today().isoformat()}},
+    }
+    if primary_locations:
+        props["Primary Locations"] = {
+            "multi_select": [{"name": l[:100]} for l in primary_locations[:12]]
+        }
+    if next_action:
+        props["Next Action"] = {"rich_text": [{"type": "text", "text": {"content": next_action[:2000]}}]}
+
+    page = client().pages.create(
+        parent={
+            "type": "data_source_id",
+            "data_source_id": ds_id_for(get_settings().notion_projects_db),
+        },
+        properties=props,
+    )
+    return {"id": page["id"], "url": page.get("url")}
+
+
+def attach_items_to_project(item_ids: list[str], project_id: str) -> int:
+    """Link items to a project and mark them as sorted."""
+    done = 0
+    for item_id in item_ids:
+        try:
+            client().pages.update(
+                page_id=item_id,
+                properties={
+                    "Related Project": {"relation": [{"id": project_id}]},
+                    "Status": {"select": {"name": "reviewed"}},
+                },
+            )
+            done += 1
+        except Exception:
+            logger.exception("Could not attach item %s to project %s", item_id, project_id)
+    return done
+
+
+def set_items_not_relevant(item_ids: list[str]) -> int:
+    """Mark items as needing no project, so they drop out of the triage queue."""
+    done = 0
+    for item_id in item_ids:
+        try:
+            client().pages.update(
+                page_id=item_id, properties={"Status": {"select": {"name": "closed"}}}
+            )
+            done += 1
+        except Exception:
+            logger.exception("Could not close item %s", item_id)
+    return done

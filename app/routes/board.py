@@ -6,6 +6,7 @@ something.
 """
 
 import logging
+import re
 
 from fastapi import APIRouter, Depends, Form, Request
 from fastapi.responses import RedirectResponse
@@ -171,3 +172,41 @@ async def create_new_item(
 
     logger.info("%s created item %s (%s)", user, title.strip()[:60], created["id"])
     return RedirectResponse(f"/?added={created['id']}", status_code=303)
+
+
+# ---------------------------------------------------------------------------
+# One item in full
+# ---------------------------------------------------------------------------
+# Registered last on purpose: "/items/{page_id}" would otherwise shadow
+# "/items/new", and FastAPI matches in definition order.
+
+_UUID = re.compile(r"^[0-9a-fA-F]{8}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{4}-?[0-9a-fA-F]{12}$")
+
+
+@router.get("/items/{page_id}")
+async def item_page(request: Request, page_id: str, user: str = Depends(require_user)):
+    """Everything we hold about one item, in one place."""
+    back = request.headers.get("referer") or "/"
+    if not _UUID.match(page_id):
+        # Not a Notion id at all — don't bother the API with it.
+        return templates.TemplateResponse(
+            request,
+            "item_detail.html",
+            {"user": user, "item": None, "error": "That isn't an item.", "back": back},
+            status_code=404,
+        )
+    try:
+        item = notion.item_detail(page_id)
+    except Exception as e:
+        logger.exception("Could not load item %s", page_id)
+        return templates.TemplateResponse(
+            request,
+            "item_detail.html",
+            {"user": user, "item": None, "error": f"Couldn't load that item: {e}", "back": back},
+            status_code=404,
+        )
+    return templates.TemplateResponse(
+        request,
+        "item_detail.html",
+        {"user": user, "item": item, "error": None, "back": back},
+    )

@@ -26,7 +26,10 @@
 <section>
   <div class="section-head">
     <h2>Needs someone</h2>
-    <a class="btn ghost small-btn" href="/items/new">+ Add something to watch</a>
+    <span class="btnrow">
+      <a class="btn ghost small-btn" href="/triage">Sort the inbox</a>
+      <a class="btn ghost small-btn" href="/items/new">+ Add something to watch</a>
+    </span>
   </div>
 
   {% if board_error %}
@@ -110,7 +113,7 @@
   </div>
   {% for item in recent[:6] %}
   <div class="card slim">
-    <strong>{{ item.title }}</strong>
+    <a href="/items/{{ item.id }}">{{ item.title }}</a>
     <span class="muted small">{{ item.props.get('Project Type', '')|replace('_', ' ') }}</span>
   </div>
   {% endfor %}

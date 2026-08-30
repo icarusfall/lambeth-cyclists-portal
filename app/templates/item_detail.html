@@ -1,0 +1,133 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }} — Lambeth Cyclists{% endblock %}
+{% block content %}
+
+<p class="muted small"><a href="{{ back }}">&larr; Back</a></p>
+
+{% if error %}<p class="flash err">{{ error }}</p>{% endif %}
+{% if item %}
+
+<div class="item-meta">
+  {% if item.project_type %}<span class="chip">{{ item.project_type|replace('_',' ') }}</span>{% endif %}
+  {% if item.action_required %}<span class="chip">{{ item.action_required|replace('_',' ') }}</span>{% endif %}
+  {% if item.priority %}<span class="chip{{ ' chip-strong' if item.priority in ('critical','high') }}">{{ item.priority }}</span>{% endif %}
+  {% if item.status %}<span class="chip">{{ item.status|replace('_',' ') }}</span>{% endif %}
+</div>
+
+<h1>{{ item.title }}</h1>
+
+{% if item.deadline %}
+  {% set days = (item.deadline - today()).days %}
+  <p class="{{ 'deadline' if days <= 14 else 'muted' }}">
+    {% if days < 0 %}Consultation closed {{ -days }} day{{ 's' if days != -1 }} ago
+    {% elif days == 0 %}Consultation closes today
+    {% else %}Consultation closes in {{ days }} day{{ 's' if days != 1 }}{% endif %}
+    &middot; {{ item.deadline|humandate }}
+  </p>
+{% endif %}
+
+{% if item.analysis_failed %}
+<div class="banner warn">
+  <strong>This one was never actually read.</strong>
+  The email arrived and was filed, but the AI analysis failed, so the summary
+  and key points below are placeholder text rather than a description of the
+  email. Open the original to see what it says.
+</div>
+{% endif %}
+
+{# ---------- Who's on it ---------- #}
+<div class="card slim">
+  {% if item.owner %}
+    <span class="tag mine">{{ item.owner|capitalize }}</span>
+    <span class="muted small">has this{% if item.claimed_on %}, since {{ item.claimed_on|humandate }}{% endif %}</span>
+    {% if item.owner == user %}
+    <form hx-post="/items/{{ item.id }}/release" hx-target="closest .card" hx-swap="outerHTML" style="margin-left:auto">
+      <button class="btn ghost small-btn" type="submit">Put it back</button>
+    </form>
+    {% endif %}
+  {% else %}
+    <span class="muted">Nobody has picked this up.</span>
+    <form hx-post="/items/{{ item.id }}/claim" hx-target="closest .card" hx-swap="outerHTML" style="margin-left:auto">
+      <button class="btn primary" type="submit">I&rsquo;ll take this on</button>
+    </form>
+  {% endif %}
+</div>
+
+{% if item.project %}
+<p class="small">Part of <a href="{{ item.project.url }}" target="_blank"><strong>{{ item.project.title }}</strong></a></p>
+{% endif %}
+
+{# ---------- What it says ---------- #}
+{% if item.summary and not item.analysis_failed %}
+<div class="card">
+  <h2>Summary</h2>
+  <p>{{ item.summary }}</p>
+</div>
+{% endif %}
+
+{% if item.key_points and not item.analysis_failed %}
+<div class="card">
+  <h2>Key points</h2>
+  <div class="prose">{{ item.key_points|markdown|safe }}</div>
+</div>
+{% endif %}
+
+{% if item.thoughts %}
+<div class="card">
+  <h2>Our thoughts</h2>
+  <div class="prose">{{ item.thoughts|markdown|safe }}</div>
+</div>
+{% endif %}
+
+{% if item.attachment_analysis %}
+<div class="card">
+  <h2>What was in the attachments</h2>
+  <div class="prose">{{ item.attachment_analysis|markdown|safe }}</div>
+</div>
+{% endif %}
+
+{# ---------- The original ---------- #}
+<div class="card">
+  <h2>The original</h2>
+  <ul class="props">
+    {% if item.sender %}<li><span>From</span> {{ item.sender }}</li>{% endif %}
+    {% if item.received %}<li><span>Arrived</span> {{ item.received|humandate }}</li>{% endif %}
+  </ul>
+
+  {% if item.consultation_url %}
+  <p><a href="{{ item.consultation_url }}" target="_blank">The consultation itself &rarr;</a></p>
+  {% endif %}
+
+  {% if item.attachments %}
+  <h3>Attachments</h3>
+  <ul class="props">
+    {% for a in item.attachments %}
+    <li><a href="{{ a.url }}" target="_blank">{{ a.filename or a.url }}</a></li>
+    {% endfor %}
+  </ul>
+  {% elif item.gmail_id %}
+  <p class="muted small">No attachments were saved with this one.</p>
+  {% endif %}
+
+  {% if item.gmail_url %}
+  <p class="small">
+    <a href="{{ item.gmail_url }}" target="_blank">Open the original email in Gmail &rarr;</a>
+    <span class="muted">— only works if you&rsquo;re signed into the account that received it.</span>
+  </p>
+  {% endif %}
+</div>
+
+{# ---------- Filing ---------- #}
+<div class="card">
+  <h2>Filing</h2>
+  <ul class="props">
+    {% if item.locations %}<li><span>Locations</span> {{ item.locations|join(', ') }}</li>{% endif %}
+    {% if item.tags %}<li><span>Tags</span> {{ item.tags|join(', ') }}</li>{% endif %}
+    {% if item.action_due %}<li><span>Action due</span> {{ item.action_due|humandate }}</li>{% endif %}
+    {% if item.processing_status %}<li><span>Processing</span> {{ item.processing_status|replace('_',' ') }}</li>{% endif %}
+  </ul>
+  <p class="muted small"><a href="{{ item.url }}" target="_blank">Open in Notion</a></p>
+</div>
+
+{% endif %}
+{% endblock %}

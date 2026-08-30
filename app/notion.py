@@ -5,6 +5,7 @@ Uses the notion-client v3 data_sources API: each database has a db_id, and a
 ds_id (data source) used for queries — discovered from the db_id and cached.
 """
 
+import json
 import logging
 from datetime import date, datetime, timedelta, timezone
 from functools import lru_cache
@@ -778,3 +779,89 @@ def projects_for_matching() -> list[dict]:
             }
         )
     return out
+
+
+# ---------------------------------------------------------------------------
+# One item, in full
+# ---------------------------------------------------------------------------
+
+
+def _attachments(raw_value: str) -> list[dict]:
+    """Attachment URLs is stored as a JSON array of {filename, url}."""
+    if not raw_value.strip():
+        return []
+    try:
+        parsed = json.loads(raw_value)
+    except json.JSONDecodeError:
+        # Older rows stored a bare URL or a comma-separated list.
+        return [{"filename": u.strip(), "url": u.strip()}
+                for u in raw_value.split(",") if u.strip().startswith("http")]
+    if isinstance(parsed, dict):
+        parsed = [parsed]
+    return [a for a in parsed if isinstance(a, dict) and a.get("url")]
+
+
+def item_detail(page_id: str) -> dict:
+    """Everything we hold about one item, shaped for the detail page."""
+    page = client().pages.retrieve(page_id=page_id)
+    props = page.get("properties", {})
+
+    def rt(name):
+        return rich_text_to_str(props.get(name, {}).get("rich_text", []))
+
+    def sel(name):
+        return (props.get(name, {}).get("select") or {}).get("name")
+
+    def ms(name):
+        return [o["name"] for o in props.get(name, {}).get("multi_select", [])]
+
+    summary, key_points = rt("Summary"), rt("AI Key Points")
+    gmail_id = rt("Gmail Message ID")
+
+    # The processor writes these when a Claude call fails, then carries on. They
+    # look like real content in a list view, so say plainly what they are.
+    analysis_failed = (
+        "Error analyzing email content" in summary
+        or "Error during AI analysis" in key_points
+    )
+
+    related = props.get("Related Project", {}).get("relation", [])
+    project = None
+    if related:
+        try:
+            project_page = client().pages.retrieve(page_id=related[0]["id"])
+            project = {"title": get_page_title(project_page), "url": project_page.get("url")}
+        except Exception:
+            logger.exception("Could not resolve related project for %s", page_id)
+
+    return {
+        "id": page["id"],
+        "url": page.get("url"),
+        "title": get_page_title(page),
+        "summary": summary,
+        "key_points": key_points,
+        "thoughts": rt("Lambeth Cyclist Thoughts"),
+        "attachment_analysis": rt("Attachment Analysis"),
+        "analysis_failed": analysis_failed,
+        "owner": sel("Owner"),
+        "status": sel("Status"),
+        "action_required": sel("Action Required"),
+        "priority": sel("Priority"),
+        "project_type": sel("Project Type"),
+        "processing_status": sel("Processing Status"),
+        "tags": ms("Tags"),
+        "locations": ms("Locations"),
+        "received": get_date_prop(page, "Date Received"),
+        "deadline": get_date_prop(page, "Consultation Deadline"),
+        "action_due": get_date_prop(page, "Action Due Date"),
+        "claimed_on": get_date_prop(page, "Claimed On"),
+        "sender": (props.get("Sender Email", {}) or {}).get("email"),
+        "gmail_id": gmail_id,
+        # Opens the original in whichever Gmail account the reader is signed
+        # into — useful for Charlie, a dead end for everyone else, so the
+        # template labels it accordingly.
+        "gmail_url": f"https://mail.google.com/mail/u/0/#all/{gmail_id}" if gmail_id else None,
+        "consultation_url": (props.get("Link to Consultation", {}) or {}).get("url"),
+        "attachments": _attachments(rt("Attachment URLs")),
+        "project": project,
+    }

@@ -18,7 +18,7 @@
     {% endif %}
   </div>
 
-  <strong class="item-title">{{ item.title }}</strong>
+  <a class="item-title" href="/items/{{ item.id }}">{{ item.title }}</a>
 
   {% if item.props.get('Summary') %}
     <p class="item-summary">{{ item.props['Summary'] }}</p>

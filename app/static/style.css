@@ -216,3 +216,8 @@ select {
 .new-project-confirm { margin-top: 10px; padding-top: 10px; border-top: 1px solid #eef2ee; }
 .new-project-confirm summary { cursor: pointer; }
 .chip-strong { border-color: var(--err); color: var(--err); }
+
+a.item-title { font-size: 17px; font-weight: 600; text-decoration: none; display: block; }
+a.item-title:hover { text-decoration: underline; }
+.prose p:first-child { margin-top: 0; }
+.prose ul { padding-left: 20px; }

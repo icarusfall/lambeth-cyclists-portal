@@ -13,15 +13,29 @@ router = APIRouter()
 @router.get("/")
 async def home(request: Request, user: str = Depends(require_user)):
     error = None
-    meetings, deadlines, recent, drafts = [], [], [], []
+    meetings, recent, drafts = [], [], []
+    unclaimed, mine = [], []
     try:
         meetings = notion.upcoming_meetings()
-        deadlines = notion.items_with_deadlines()
         recent = notion.recent_items(days=30)
         drafts = notion.current_drafts()
     except Exception as e:
         logger.exception("Dashboard Notion queries failed")
         error = f"Couldn't load data from Notion: {e}"
+
+    # The board proper. Kept in its own try so that a missing Owner field
+    # (i.e. scripts/add_ownership_fields.py has not been run yet) degrades to
+    # the rest of the dashboard instead of blanking the page.
+    board_error = None
+    try:
+        unclaimed = notion.unclaimed_items()
+        mine = notion.items_owned_by(user)
+    except Exception as e:
+        logger.exception("Board queries failed")
+        board_error = (
+            "The board isn't set up yet — run scripts/add_ownership_fields.py "
+            f"to add the Owner field. ({e})"
+        )
 
     return templates.TemplateResponse(
         request,
@@ -30,7 +44,9 @@ async def home(request: Request, user: str = Depends(require_user)):
             "user": user,
             "meetings": meetings,
             "no_future_meeting": not meetings and not error,
-            "deadlines": deadlines,
+            "unclaimed": unclaimed,
+            "mine": mine,
+            "board_error": board_error,
             "recent": recent,
             "drafts": drafts,
             "error": error,

@@ -382,3 +382,161 @@ def current_drafts(limit: int = 10) -> list[dict]:
         limit=limit,
     )
     return [simplify_page(p) for p in results]
+
+
+# ---------------------------------------------------------------------------
+# Ownership: claiming items off the board
+# ---------------------------------------------------------------------------
+# "Owner" is a select holding a portal user name, not a Notion people
+# property — claiming a consultation must not require a Notion seat.
+# Run scripts/add_ownership_fields.py once to create the fields.
+
+OWNER_PROP = "Owner"
+CLAIMED_ON_PROP = "Claimed On"
+
+# Items in these states are finished; they never want an owner.
+_DONE_STATUSES = ("submitted", "closed")
+
+
+def _live_item_filters() -> list[dict]:
+    """Filters excluding items that are already finished with."""
+    return [
+        {"property": "Status", "select": {"does_not_equal": s}} for s in _DONE_STATUSES
+    ]
+
+
+def item_owner(page) -> str | None:
+    """The portal user who owns a raw Notion page, or None."""
+    prop = page.get("properties", {}).get(OWNER_PROP) or {}
+    sel = prop.get("select")
+    return (sel or {}).get("name") or None
+
+
+# Only these actually need a person. Everything else the processor files is
+# for the record — showing it on the board buries the real asks.
+_NEEDS_A_PERSON = ("response_needed", "urgent_action")
+
+
+def unclaimed_items(limit: int = 5, within_days: int = 90) -> list[dict]:
+    """Live items nobody has taken on — the 'Needs someone' queue.
+
+    Deliberately a short list, not the whole backlog. A volunteer offered
+    twenty undifferentiated items reads it as a wall and picks none of them;
+    the point of the board is a handful of specific asks. `limit` is the
+    number shown, so raise it only alongside a "see all" page.
+
+    Excluded: items that only need filing (information_only, monitoring),
+    consultations whose deadline has already passed, and anything that
+    arrived more than `within_days` ago without a deadline — six months of
+    untriaged history is not a to-do list.
+
+    The date rule is applied in Python: expressing it as a filter needs
+    and-inside-or-inside-and, and Notion only nests two levels deep.
+    """
+    results = query(
+        get_settings().notion_items_db,
+        filter_obj={
+            "and": [
+                {"property": OWNER_PROP, "select": {"is_empty": True}},
+                *_live_item_filters(),
+                {
+                    "or": [
+                        {"property": "Action Required", "select": {"equals": a}}
+                        for a in _NEEDS_A_PERSON
+                    ]
+                },
+            ]
+        },
+        sorts=[{"property": "Date Received", "direction": "descending"}],
+        limit=100,
+    )
+
+    today = date.today()
+    cutoff = today - timedelta(days=within_days)
+    keep = []
+    for raw in results:
+        deadline = get_date_prop(raw, "Consultation Deadline")
+        if deadline is not None:
+            if deadline < today:
+                continue  # the moment to respond has gone
+        else:
+            received = get_date_prop(raw, "Date Received")
+            if received is not None and received < cutoff:
+                continue  # old and undated; triage, not a live job
+        item = simplify_page(raw)
+        item["deadline"] = deadline
+        item["owner"] = None
+        keep.append(item)
+
+    # Soonest deadline first, undated last, newest first within each group.
+    keep.sort(key=lambda i: (i["deadline"] is None, i["deadline"] or today))
+    return keep[:limit]
+
+
+def items_owned_by(user: str, limit: int = 20) -> list[dict]:
+    """Live items this person has taken on — the 'You're on' list."""
+    results = query(
+        get_settings().notion_items_db,
+        filter_obj={
+            "and": [
+                {"property": OWNER_PROP, "select": {"equals": user}},
+                *_live_item_filters(),
+            ]
+        },
+        sorts=[{"property": "Consultation Deadline", "direction": "ascending"}],
+        limit=limit,
+    )
+    items = [simplify_page(p) for p in results]
+    for item, raw in zip(items, results):
+        item["deadline"] = get_date_prop(raw, "Consultation Deadline")
+        item["owner"] = user
+    return items
+
+
+def get_item(page_id: str) -> dict:
+    """One item, flattened, with deadline and owner resolved."""
+    page = client().pages.retrieve(page_id=page_id)
+    item = simplify_page(page)
+    item["deadline"] = get_date_prop(page, "Consultation Deadline")
+    item["owner"] = item_owner(page)
+    return item
+
+
+def claim_item(page_id: str, user: str) -> dict:
+    """Take an item on. Returns the item as it now stands.
+
+    If somebody else got there first this makes no change and returns their
+    version, so the caller can tell the user who has it. Notion has no
+    conditional write, so this is a read-then-write check rather than a true
+    lock — fine for a committee, not for a crowd.
+    """
+    current = get_item(page_id)
+    if current["owner"] and current["owner"] != user:
+        return current
+
+    client().pages.update(
+        page_id=page_id,
+        properties={
+            OWNER_PROP: {"select": {"name": user}},
+            CLAIMED_ON_PROP: {"date": {"start": date.today().isoformat()}},
+        },
+    )
+    current["owner"] = user
+    return current
+
+
+def release_item(page_id: str, user: str) -> dict:
+    """Put an item back on the board. Only its owner may do this."""
+    current = get_item(page_id)
+    if current["owner"] != user:
+        return current
+
+    client().pages.update(
+        page_id=page_id,
+        properties={
+            OWNER_PROP: {"select": None},
+            CLAIMED_ON_PROP: {"date": None},
+        },
+    )
+    current["owner"] = None
+    return current

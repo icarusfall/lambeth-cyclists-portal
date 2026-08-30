@@ -163,3 +163,34 @@ textarea.draft-md { font-family: ui-monospace, Consolas, monospace; font-size: 1
 @media (min-width: 700px) {
   h1 { font-size: 28px; }
 }
+
+/* --- The board: claimable items --- */
+.lede { margin: 2px 0 18px; }
+
+.section-head {
+  display: flex; align-items: baseline; justify-content: space-between;
+  gap: 10px; margin: 22px 0 8px;
+}
+.section-head h2 { margin: 0; }
+
+.item { padding: 15px 16px; }
+.item-mine { border-left: 3px solid var(--green); }
+.item-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: baseline; margin-bottom: 4px; }
+.item-title { display: block; font-size: 17px; }
+.item-summary { margin: 5px 0 0; color: #4a5a50; font-size: 15px; }
+.item .btnrow { margin: 12px 0 0; }
+.item-notion { margin-left: auto; }
+
+.chip {
+  font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase;
+  color: var(--muted); border: 1px solid var(--border);
+  border-radius: 10px; padding: 2px 8px;
+}
+
+.tag.mine { background: #e8f5ec; border: 1px solid #bfe0ca; color: var(--ok); }
+.tag.with { background: #eef4f9; border: 1px solid #c3d5e5; color: #245a8d; }
+
+.small-btn { padding: 7px 12px; font-size: 14px; }
+
+/* htmx swaps the whole card; fade the outgoing one so the change registers */
+.item.htmx-swapping { opacity: 0.4; transition: opacity 120ms ease-out; }

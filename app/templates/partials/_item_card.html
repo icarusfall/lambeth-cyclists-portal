@@ -1,0 +1,47 @@
+{# One item on the board. Rendered inline by the dashboard and swapped in
+   place by htmx after a claim or release, so it must stand alone. #}
+<div class="card item{% if item.owner %} item-mine{% endif %}" id="item-{{ item.id }}">
+
+  <div class="item-meta">
+    {% if item.props.get('Project Type') %}
+      <span class="chip">{{ item.props['Project Type']|replace('_', ' ') }}</span>
+    {% endif %}
+    {% if item.deadline %}
+      {% set days = (item.deadline - today()).days %}
+      <span class="{{ 'deadline' if days <= 14 else 'muted small' }}">
+        {% if days < 0 %}Closed {{ -days }} day{{ 's' if days != -1 }} ago
+        {% elif days == 0 %}Closes today
+        {% elif days == 1 %}Closes tomorrow
+        {% else %}Closes in {{ days }} days{% endif %}
+        &middot; {{ item.deadline|humandate }}
+      </span>
+    {% endif %}
+  </div>
+
+  <strong class="item-title">{{ item.title }}</strong>
+
+  {% if item.props.get('Summary') %}
+    <p class="item-summary">{{ item.props['Summary'] }}</p>
+  {% endif %}
+
+  {% if message %}<p class="flash ok small">{{ message }}</p>{% endif %}
+
+  <div class="btnrow">
+    {% if item.owner == user %}
+      <span class="tag mine">Yours</span>
+      <button class="btn ghost small-btn"
+              hx-post="/items/{{ item.id }}/release"
+              hx-target="#item-{{ item.id }}"
+              hx-swap="outerHTML">Put it back</button>
+    {% elif item.owner %}
+      <span class="tag with">With {{ item.owner|capitalize }}</span>
+    {% else %}
+      <button class="btn primary"
+              hx-post="/items/{{ item.id }}/claim"
+              hx-target="#item-{{ item.id }}"
+              hx-swap="outerHTML">I'll take this on</button>
+    {% endif %}
+    <span class="htmx-indicator spinner">saving…</span>
+    <a class="muted small item-notion" href="{{ item.url }}" target="_blank">Details</a>
+  </div>
+</div>

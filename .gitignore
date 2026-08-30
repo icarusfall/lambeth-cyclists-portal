@@ -4,3 +4,8 @@ venv/
 .venv/
 .env
 .DS_Store
+
+# Seeded design canvas is a build product (~2.4MB editor payload).
+# The .dc.html sources and canvas.json in design/ are the real inputs.
+design/lambeth-cyclists-portal.html
+design/measure/

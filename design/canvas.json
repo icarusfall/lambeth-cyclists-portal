@@ -1,0 +1,40 @@
+{
+  "artboards": [
+    { "file": "SignIn.dc.html", "x": 0, "y": 0, "w": 1440, "h": 900, "title": "1 · Signing in" },
+    { "file": "Main.dc.html", "x": 1560, "y": 0, "w": 1440, "h": 1180, "title": "2 · The board" },
+    { "file": "Consultation.dc.html", "x": 3120, "y": 0, "w": 1440, "h": 1300, "title": "3 · One consultation" },
+    { "file": "Mobile.dc.html", "x": 0, "y": 1440, "w": 390, "h": 844, "title": "4 · The board on a phone" },
+    { "file": "Chat.dc.html", "x": 630, "y": 1440, "w": 1440, "h": 900, "title": "5 · Ask CycleBot" }
+  ],
+  "annotations": [
+    {
+      "id": "idea",
+      "x": 0,
+      "y": -190,
+      "w": 430,
+      "text": "The organising idea\n\nEverything the group needs help with is the same shape: a thing that needs a person attached to it by a date.\n\nSo the portal stops being a status board and becomes a shared queue of claimable work with visible owners."
+    },
+    {
+      "id": "board-note",
+      "x": 1560,
+      "y": -190,
+      "w": 430,
+      "text": "Needs someone / You're on\n\nThe two sections a volunteer actually acts on, above everything else. Every card says how long it will take.\n\n'Around the group' exists so the place feels populated — including the nudge that two people have offered to help and nobody has replied."
+    },
+    {
+      "id": "notion-note",
+      "x": 3120,
+      "y": -190,
+      "w": 430,
+      "text": "Notion is demoted, not hidden\n\nNo card ends in 'Open in Notion ↗' any more. It survives as one quiet line at the bottom of the page for committee members who want it."
+    },
+    {
+      "id": "content-note",
+      "x": 0,
+      "y": 2380,
+      "w": 700,
+      "text": "All names, dates, streets and consultations here are illustrative sample content — chosen to look like real Lambeth material so the layout can be judged honestly. Nothing on these screens is live data."
+    }
+  ],
+  "launch": { "view": "canvas" }
+}

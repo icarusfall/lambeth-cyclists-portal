@@ -1,0 +1,103 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap">
+  <style>
+    body { margin: 0; background: #f4f6f4; color: #1f2a22;
+           font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+           font-size: 16px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+    a { color: #1a7a3c; } a:hover { color: #135c2d; }
+    h1, h2, h3 { font-family: Newsreader, Georgia, "Times New Roman", serif; font-weight: 500; margin: 0; }
+  </style>
+</helmet>
+
+<div style="min-height: 100%; background: #f4f6f4;">
+
+  <!-- Masthead -->
+  <div style="background: #1a7a3c; border-bottom: 3px solid #0f4423;">
+    <div style="max-width: 960px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 20px;">
+      <div style="display: flex; align-items: center; gap: 10px; color: #ffffff;">
+        <svg width="30" height="30" viewBox="0 0 28 28" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="7" cy="18.5" r="5.2"></circle>
+          <circle cx="21" cy="18.5" r="5.2"></circle>
+          <path d="M7 18.5 L11.5 10 L17.5 10 L21 18.5"></path>
+          <path d="M11.5 10 L16 18.5"></path>
+          <path d="M10 10 L13 10"></path>
+          <path d="M17.5 10 L19.5 8"></path>
+        </svg>
+        <div style="display: flex; flex-direction: column;">
+          <span style="font-family: Newsreader, Georgia, serif; font-size: 20px; font-weight: 600; letter-spacing: 0.01em;">Lambeth Cyclists</span>
+          <span style="font-size: 11px; color: #b9dcc6; letter-spacing: 0.06em; text-transform: uppercase;">Members' portal</span>
+        </div>
+      </div>
+      <div style="display: flex; gap: 20px; align-items: center;">
+        <span style="color: #d3ead9; font-size: 15px;">The board</span>
+        <span style="color: #d3ead9; font-size: 15px;">Consultations</span>
+        <span style="color: #d3ead9; font-size: 15px;">Meetings</span>
+        <span style="color: #d3ead9; font-size: 15px;">Newsletter</span>
+        <span style="color: #ffffff; font-size: 15px; font-weight: 600; border-bottom: 2px solid #ffffff; padding-bottom: 2px;">Ask CycleBot</span>
+        <span style="color: #9ecdb0; font-size: 14px; padding-left: 6px; border-left: 1px solid #3e8f5b;">Simon</span>
+      </div>
+    </div>
+  </div>
+
+  <div style="max-width: 720px; margin: 0 auto; padding: 30px 20px 40px;">
+
+    <!-- Intro -->
+    <div style="margin-bottom: 22px;">
+      <h1 style="font-size: 30px; color: #16241b; letter-spacing: -0.01em; margin-bottom: 6px;">Ask CycleBot</h1>
+      <p style="margin: 0; color: #4a5a50; font-size: 16px; max-width: 600px;">CycleBot can read everything the group has filed &mdash; every consultation and traffic order that has come in, our meeting notes and agendas, current campaigns, and the ward and councillor research. Ask it in plain English. It can look things up, but it can&rsquo;t change anything.</p>
+    </div>
+
+    <!-- Suggested questions -->
+    <div style="margin-bottom: 26px;">
+      <p style="margin: 0 0 10px; font-size: 13px; letter-spacing: 0.09em; text-transform: uppercase; color: #6b7a6f; font-weight: 700;">Things people ask</p>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px;">
+        <div style="background: #ffffff; border: 1px solid #dde5de; border-radius: 10px; padding: 13px 15px; font-size: 15px; color: #1f2a22;">What&rsquo;s on the agenda for the next meeting?</div>
+        <div style="background: #ffffff; border: 1px solid #dde5de; border-radius: 10px; padding: 13px 15px; font-size: 15px; color: #1f2a22;">Which consultations close in the next month?</div>
+        <div style="background: #ffffff; border: 1px solid #dde5de; border-radius: 10px; padding: 13px 15px; font-size: 15px; color: #1f2a22;">Have we said anything about Streatham High Road before?</div>
+        <div style="background: #ffffff; border: 1px solid #dde5de; border-radius: 10px; padding: 13px 15px; font-size: 15px; color: #1f2a22;">Who is the councillor for Herne Hill?</div>
+      </div>
+    </div>
+
+    <!-- Conversation -->
+    <div style="display: flex; flex-direction: column; gap: 14px; margin-bottom: 22px;">
+
+      <div style="background: #1a7a3c; color: #ffffff; border-radius: 14px; border-bottom-right-radius: 4px; padding: 11px 16px; max-width: 88%; margin-left: auto; font-size: 15px;">
+        Have we said anything about Streatham High Road before?
+      </div>
+
+      <div style="background: #ffffff; border: 1px solid #dde5de; border-radius: 14px; border-bottom-left-radius: 4px; padding: 15px 18px; max-width: 88%; font-size: 15px; color: #26332b;">
+        <p style="margin: 0 0 11px;">Yes &mdash; twice, both times about the same stretch north of the station.</p>
+        <p style="margin: 0 0 6px;"><strong style="font-weight: 600;">March 2026</strong> &mdash; we responded to the bus priority scheme. We supported the bus lane but asked for the cycle lane to be kept at 2.0m past the pinch point at Gleneagle Road, and objected to the shared-use footway outside the station.</p>
+        <p style="margin: 0 0 11px;"><strong style="font-weight: 600;">October 2025</strong> &mdash; a traffic order for loading bays. We didn&rsquo;t object.</p>
+        <p style="margin: 0 0 11px;">The current TfL consultation covers much the same ground, and the 1.2m pinch point we flagged in March appears to still be there.</p>
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; padding-top: 11px; border-top: 1px solid #eef2ee;">
+          <span style="font-size: 13px; color: #6b7a6f;">Looked at:</span>
+          <span style="font-size: 13px; color: #1a7a3c; text-decoration: underline;">Streatham High Road bus priority (Mar 2026)</span>
+          <span style="font-size: 13px; color: #8a978d;">&middot;</span>
+          <span style="font-size: 13px; color: #1a7a3c; text-decoration: underline;">Loading bay order (Oct 2025)</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Composer -->
+    <div style="display: flex; gap: 9px; align-items: flex-end;">
+      <div style="flex: 1; border: 1px solid #dde5de; background: #ffffff; border-radius: 10px; padding: 13px 15px; font-size: 16px; color: #a3ada6;">Ask anything about our consultations, meetings or campaigns&hellip;</div>
+      <div style="background: #1a7a3c; color: #ffffff; border-radius: 10px; padding: 13px 20px; font-size: 16px; font-weight: 600;">Send</div>
+    </div>
+
+    <p style="margin: 14px 0 0; font-size: 13px; color: #8a978d;">CycleBot can be wrong. For anything you&rsquo;re about to send to the council, check it against the original documents.</p>
+
+  </div>
+</div>
+</x-dc>
+</body>
+</html>
